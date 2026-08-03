@@ -211,6 +211,15 @@ else
     I3_CONF="$HOME/.config/i3/config"
     if [ -f "$I3_CONF" ]; then
         if ! grep -q "greenclip daemon" "$I3_CONF"; then
+            # Comment out duplicate bindsym $mod+v to prevent i3 syntax errors
+            if grep -qE "bindsym .*[[:space:]]v[[:space:]]" "$I3_CONF" || grep -qE "bindsym .*\\\$mod\\+v" "$I3_CONF"; then
+                echo -e "${YELLOW}[*] Commenting out duplicate keybindings for \$mod+v in i3 config...${NC}"
+                # Backup config
+                cp "$I3_CONF" "${I3_CONF}.bak"
+                # Comment out the matching bindsym line
+                sed -i -E 's/^([[:space:]]*bindsym[[:space:]]+(\$mod|Mod[1-5]|[a-zA-Z0-9]+)\+v[[:space:]].*)/# \1 # Disabled by setup_clipboard.sh to avoid duplicate keybinding/g' "$I3_CONF"
+            fi
+
             echo -e "\n# Standalone Clipboard History (Greenclip)" >> "$I3_CONF"
             echo "exec --no-startup-id greenclip daemon" >> "$I3_CONF"
             echo "bindsym \$mod+v exec $MENU_SCRIPT" >> "$I3_CONF"
