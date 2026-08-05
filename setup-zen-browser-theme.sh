@@ -125,11 +125,14 @@ ZENCHROME
  * Zen Browser - Web Content Font & Color Optimization
  */
 
-/* Force the exact terminal background color on all pages */
-@-moz-document url-prefix(http), url-prefix(https), url-prefix(about:) {
+/* Force the exact terminal background color on empty pages only */
+@-moz-document url("about:blank"), url("about:newtab"), url("about:home") {
     :root, body, html {
-        background-color: #090a09 !important;
+        background-color: transparent !important;
+        background: transparent !important;
     }
+}
+@-moz-document url-prefix(http), url-prefix(https), url-prefix(about:) {
     body, p, span, a, li, h1, h2, h3, h4, h5, h6, input, textarea, button {
         -webkit-font-smoothing: antialiased !important;
         -moz-osx-font-smoothing: grayscale !important;
