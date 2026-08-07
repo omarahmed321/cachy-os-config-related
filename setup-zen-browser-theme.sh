@@ -59,79 +59,73 @@ if [ ${#ZEN_PROFILES[@]} -gt 0 ]; then
         echo -e "Configuring Zen Browser profile: ${CYAN}$(basename "$profile")${NC}"
         mkdir -p "$profile/chrome"
         
-        # Write userChrome.css (Transparent & Borderless Terminal Style)
+        # Write userChrome.css (Transparent & Borderless Terminal Style with Solid Web Content Viewport)
         cat << 'ZENCHROME' > "$profile/chrome/userChrome.css"
 /*
- * Zen Browser - Terminal Style (Transparent & Borderless)
+ * Zen Browser - Glassy UI Chrome & Clean Web Content Viewport
  */
 
-/* Enable transparency on the main window and all content wrappers */
+/* Window & Topbar Shell Transparency (Glassy Chrome UI) */
 :root,
 #main-window,
-#browser,
-#appcontent,
-browser,
-.browserSidebarContainer,
-#content-deck,
-#tabbrowser-deck,
-#tabbrowser-tabbox {
-    background-color: transparent !important;
-    background: transparent !important;
-    border: none !important;
-    border-top: none !important;
-    border-bottom: none !important;
-    border-left: none !important;
-    border-right: none !important;
-    box-shadow: none !important;
-    outline: none !important;
-}
-
-/* Completely remove any default borders or separator lines */
 #navigator-toolbox,
 #nav-bar,
 #titlebar,
 #TabsToolbar,
-#zen-appcontent-navbar-container {
+#zen-appcontent-navbar-container,
+#zen-sidebar-top-buttons {
+    background-color: transparent !important;
+    background: transparent !important;
     border: none !important;
-    border-top: none !important;
-    border-bottom: none !important;
-    border-left: none !important;
-    border-right: none !important;
     box-shadow: none !important;
     outline: none !important;
 }
 
-/* Remove default splitters and frames */
+/* Remove default splitters, borders and status boxes */
 #zen-sidebar-splitter,
 #appcontent-splitter {
     display: none !important;
     width: 0 !important;
-    max-width: 0 !important;
-    min-width: 0 !important;
     visibility: collapse !important;
 }
 
-/* Hide status panels */
 #statuspanel,
 #browser-bottombox {
     display: none !important;
     visibility: collapse !important;
+}
+
+/* Solid Web Content Container (Prevents wallpaper leakage into web pages) */
+#appcontent,
+#tabbrowser-tabpanels,
+.browserSidebarContainer,
+#content-deck,
+#tabbrowser-deck {
+    background-color: #0e0f0e !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Rounded frame for web content area */
+#appcontent {
+    border-radius: 6px !important;
 }
 ZENCHROME
 
         # Write userContent.css
         cat << 'ZENCONTENT' > "$profile/chrome/userContent.css"
 /*
- * Zen Browser - Web Content Font & Color Optimization
+ * Zen Browser - Web Content Font & Page Optimization
  */
 
-/* Force the exact terminal background color on empty pages only */
+/* Empty / New Tab page background */
 @-moz-document url("about:blank"), url("about:newtab"), url("about:home") {
     :root, body, html {
-        background-color: transparent !important;
-        background: transparent !important;
+        background-color: #0e0f0e !important;
     }
 }
+
+/* Smooth font rendering on all websites */
 @-moz-document url-prefix(http), url-prefix(https), url-prefix(about:) {
     body, p, span, a, li, h1, h2, h3, h4, h5, h6, input, textarea, button {
         -webkit-font-smoothing: antialiased !important;
