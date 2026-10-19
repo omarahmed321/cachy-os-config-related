@@ -1,0 +1,90 @@
+total 13572
+drwx------ 1 omar omar    1968 ‏أكت ‏19 ‏17:‏19 .
+drwxr-xr-x 1 root root       8 ‏يون ‏21 ‏17:‏12 ..
+drwxr-xr-x 1 omar omar     160 ‏يول ‏28 ‏17:‏27 .android
+-rwxr-xr-x 1 omar omar     452 ‏يول ‏ 5 ‏23:‏06 antigravity.sh
+-rw-r--r-- 1 omar omar      21 ‏يون ‏21 ‏17:‏12 .bash_logout
+-rw-r--r-- 1 omar omar      92 ‏أغس ‏28 ‏16:‏07 .bash_profile
+-rw-r--r-- 1 omar omar     245 ‏أغس ‏28 ‏16:‏07 .bashrc
+drwx------ 1 omar omar     752 ‏أكت ‏19 ‏17:‏18 .cache
+drwxr-xr-x 1 omar omar    1352 ‏أكت ‏19 ‏17:‏19 cachy-os-config-related
+drwxr-xr-x 1 omar omar    1292 ‏أغس ‏ 5 ‏21:‏48 cachyos-restore
+drwxr-xr-x 1 omar omar     418 ‏أكت ‏19 ‏17:‏18 .claude
+-rw------- 1 omar omar   80751 ‏أكت ‏19 ‏17:‏19 .claude.json
+-rw------- 1 omar omar   80479 ‏أكت ‏19 ‏17:‏15 .claude.json.backup
+drwxr-xr-x 1 omar omar    1432 ‏أكت ‏ 7 ‏13:‏02 .config
+-rw-r--r-- 1 omar omar   10520 ‏يول ‏ 7 ‏15:‏46 configure_zen_windows.ps1
+drwx------ 1 omar omar      36 ‏أغس ‏28 ‏21:‏48 .copilot
+drwxr-xr-x 1 omar omar     288 ‏يول ‏28 ‏17:‏12 .dart-tool
+drwxr-xr-x 1 omar omar      26 ‏يون ‏24 ‏00:‏57 Desktop
+drwxr-xr-x 1 omar omar      26 ‏سبت ‏21 ‏22:‏55 Documentation
+drwxr-xr-x 1 omar omar     134 ‏سبت ‏18 ‏16:‏32 Documents
+drwxr-xr-x 1 omar omar    3312 ‏أكت ‏19 ‏13:‏18 Downloads
+-rwxr-xr-x 1 omar omar 8499465 ‏أغس ‏17 ‏20:‏33 .equilotl
+-rwxr-xr-x 1 omar omar    3115 ‏يول ‏ 8 ‏04:‏51 extract_tabs.py
+-rwxr-xr-x 1 omar omar    2224 ‏سبت ‏13 ‏10:‏44 fix_wifi.sh
+-rw-r--r-- 1 omar omar      78 ‏يول ‏28 ‏17:‏12 .flutter
+drwxr-xr-x 1 omar omar      64 ‏يون ‏21 ‏17:‏49 .gemini
+-rw-r--r-- 1 omar omar     272 ‏يول ‏ 9 ‏03:‏58 .gitconfig
+drwx------ 1 omar omar     116 ‏يون ‏21 ‏18:‏28 .gnupg
+-rw-r--r-- 1 omar omar     595 ‏يون ‏21 ‏17:‏53 .gtkrc-2.0
+drwxr-xr-x 1 omar omar     192 ‏أكت ‏19 ‏13:‏18 hyde
+drwxr-xr-x 1 omar omar     140 ‏أكت ‏19 ‏13:‏18 .icons
+drwxr-xr-x 1 omar omar      30 ‏يول ‏30 ‏19:‏15 .java
+-rw-r--r-- 1 omar omar     268 ‏يول ‏31 ‏00:‏44 launch_minecraft.sh
+drwxr-xr-x 1 omar omar      26 ‏يون ‏21 ‏17:‏27 .local
+drwxr-xr-x 1 omar omar      60 ‏أغس ‏18 ‏16:‏11 Local Sites
+drwxr-xr-x 1 omar omar      20 ‏سبت ‏26 ‏01:‏39 logs
+drwxrwsr-x 1 omar omar       8 ‏أغس ‏ 6 ‏20:‏16 .mamba
+drwxr-xr-x 1 omar omar     172 ‏سبت ‏21 ‏22:‏53 mcpanel
+drwxr-xr-x 1 omar omar     126 ‏أغس ‏28 ‏17:‏49 .mcp-auth
+drwxr-xr-x 1 omar omar     768 ‏أكت ‏ 7 ‏13:‏22 .minecraft
+drwxr-xr-x 1 omar omar     452 ‏أكت ‏19 ‏13:‏18 minecraft-server-make-app-apk
+drwxr-xr-x 1 omar omar       0 ‏يون ‏21 ‏17:‏15 Music
+drwxr-xr-x 1 omar omar      12 ‏أغس ‏ 4 ‏18:‏57 myMachine
+drwxr-xr-x 1 omar omar     412 ‏أغس ‏ 5 ‏23:‏07 newConfigCachy
+drwxr-xr-x 1 omar omar      76 ‏أكت ‏19 ‏13:‏15 .npm
+drwx------ 1 omar omar      24 ‏يون ‏21 ‏17:‏32 .nv
+-rw-r--r-- 1 omar omar     475 ‏سبت ‏ 1 ‏18:‏44 .nvidia-settings-rc
+-rw-r--r-- 1 omar omar   95163 ‏يون ‏21 ‏17:‏53 .p10k.zsh
+drwxr-xr-x 1 omar omar       6 ‏يون ‏21 ‏17:‏54 .parallel
+drwxr-xr-x 1 omar omar      22 ‏يون ‏21 ‏18:‏02 Pictures
+drwx------ 1 omar omar      10 ‏يون ‏24 ‏01:‏14 .pki
+-rw-r--r-- 1 omar omar      35 ‏أغس ‏28 ‏16:‏07 .profile
+drwxr-xr-x 1 omar omar      74 ‏سبت ‏17 ‏15:‏29 proggramming
+drwxr-xr-x 1 omar omar      36 ‏أغس ‏ 6 ‏20:‏17 Projects
+drwxr-xr-x 1 omar omar       0 ‏يون ‏21 ‏17:‏15 Public
+-rw------- 1 omar omar     256 ‏يون ‏24 ‏01:‏14 .pulse-cookie
+-rw-r--r-- 1 omar omar      21 ‏أغس ‏25 ‏02:‏21 .python_history
+-rwxr-xr-x 1 omar omar    3135 ‏أغس ‏ 5 ‏16:‏04 setup_arabic_keyboard.sh
+drwxr-xr-x 1 omar omar     184 ‏أكت ‏17 ‏23:‏28 .ssh
+-rwxr-xr-x 1 omar omar    7938 ‏أغس ‏30 ‏21:‏50 start_hotspot.sh
+-rwxr-xr-x 1 omar omar    1044 ‏أغس ‏ 6 ‏20:‏18 start_wordpress.sh
+drwxr-xr-x 1 omar omar     164 ‏أكت ‏ 3 ‏21:‏47 .steam
+lrwxrwxrwx 1 omar omar      29 ‏أكت ‏ 3 ‏21:‏47 .steampath -> /home/omar/.steam/sdk32/steam
+lrwxrwxrwx 1 omar omar      27 ‏أكت ‏ 3 ‏21:‏47 .steampid -> /home/omar/.steam/steam.pid
+drwxr-xr-x 1 omar omar       0 ‏يون ‏21 ‏17:‏15 Templates
+drwxr-xr-x 1 omar omar     194 ‏سبت ‏ 8 ‏21:‏51 test-claude
+drwxr-xr-x 1 omar omar      54 ‏أغس ‏ 7 ‏16:‏13 testFD
+drwxr-xr-x 1 omar omar     298 ‏يون ‏21 ‏17:‏29 .themes
+drwxr-xr-x 1 omar omar     466 ‏أكت ‏19 ‏13:‏13 Todo-List Website
+-rw-r--r-- 1 omar omar 4661165 ‏أغس ‏12 ‏19:‏14 Todo-List-Website.apk
+drwxr-xr-x 1 omar omar      12 ‏أكت ‏19 ‏13:‏10 tools
+drwxr-xr-x 1 omar omar       6 ‏أغس ‏20 ‏18:‏48 .var
+drwxr-xr-x 1 omar omar       0 ‏يون ‏21 ‏17:‏15 Videos
+drwxr-xr-x 1 omar omar       0 ‏يول ‏ 4 ‏16:‏46 .vim
+-rw------- 1 omar omar    1370 ‏يول ‏ 8 ‏03:‏04 .viminfo
+-rw------- 1 omar omar       0 ‏يول ‏13 ‏23:‏04 .viminfo.tmp
+-rw-r--r-- 1 omar omar     232 ‏يون ‏25 ‏21:‏18 .vrtw-config.json
+drwxr-xr-x 1 omar omar      38 ‏يون ‏23 ‏15:‏54 .vscode-oss
+drwxr-xr-x 1 omar omar      26 ‏يون ‏23 ‏15:‏54 .vscode-oss-shared
+drwxr-xr-x 1 omar omar      12 ‏أغس ‏ 4 ‏22:‏02 websiteamproject
+drwxr-xr-x 1 omar omar     186 ‏أغس ‏ 1 ‏12:‏30 website-minecraft-dedicated-server-panel
+drwxr-xr-x 1 omar omar      82 ‏سبت ‏13 ‏10:‏44 .wifi_fix_source
+drwxr-xr-x 1 omar omar      10 ‏أغس ‏ 6 ‏20:‏17 .wp-cli
+-rw-r--r-- 1 omar omar   56167 ‏يول ‏ 5 ‏20:‏12 .zcompdump-omar-5.9.1
+-r--r--r-- 1 omar omar  121760 ‏يول ‏ 5 ‏20:‏12 .zcompdump-omar-5.9.1.zwc
+-rw-r--r-- 1 omar omar   56562 ‏سبت ‏17 ‏01:‏58 .zcompdump-omar-5.9.2
+-r--r--r-- 1 omar omar  122664 ‏سبت ‏17 ‏01:‏58 .zcompdump-omar-5.9.2.zwc
+-rw-r--r-- 1 omar omar    4150 ‏أغس ‏28 ‏16:‏07 .zshrc
+drwxr-xr-x 1 omar omar     308 ‏أكت ‏19 ‏13:‏10 zz

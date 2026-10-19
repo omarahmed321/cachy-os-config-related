@@ -1,0 +1,22 @@
+total 88772
+drwxr-xr-x 1 omar omar      274 ‏سبت ‏20 ‏10:‏05 .
+drwxr-xr-x 1 omar omar       26 ‏يون ‏21 ‏17:‏27 ..
+lrwxrwxrwx 1 omar omar       47 ‏سبت ‏17 ‏01:‏58 claude -> /home/omar/.local/share/claude/versions/2.1.274
+-rwxr-xr-x 1 omar omar       42 ‏سبت ‏20 ‏10:‏02 contabo
+-rwxr-xr-x 1 omar omar      354 ‏يول ‏30 ‏14:‏19 double-pageup.sh
+-rw-r--r-- 1 omar omar      346 ‏أغس ‏28 ‏16:‏07 env
+-rw-r--r-- 1 omar omar      183 ‏أغس ‏28 ‏16:‏07 env.fish
+-rwxr-xr-x 1 omar omar 40702114 ‏يون ‏17 ‏22:‏35 gh
+-rwxr-xr-x 1 omar omar   302056 ‏سبت ‏11 ‏10:‏23 m913-ctl
+-rwxr-xr-x 1 omar omar       82 ‏سبت ‏11 ‏10:‏25 m913-gui
+lrwxrwxrwx 1 omar omar       68 ‏سبت ‏ 1 ‏14:‏19 minecraft-launcher -> /home/omar/Documents/curseforge/minecraft/Install/minecraft-launcher
+lrwxrwxrwx 1 omar omar       29 ‏سبت ‏20 ‏10:‏05 omar -> /home/omar/.local/bin/contabo
+-rwxr-xr-x 1 omar omar      251 ‏سبت ‏11 ‏10:‏35 redmice
+-rwxr-xr-x 1 omar omar      833 ‏سبت ‏15 ‏11:‏44 runsuperior
+-rwxr-xr-x 1 omar omar      899 ‏سبت ‏15 ‏15:‏53 runzero
+-rwxr-xr-x 1 omar omar      392 ‏سبت ‏15 ‏15:‏54 stopzero
+lrwxrwxrwx 1 omar omar       13 ‏يون ‏21 ‏17:‏27 swww -> /usr/bin/awww
+lrwxrwxrwx 1 omar omar       20 ‏يون ‏21 ‏17:‏27 swww-daemon -> /usr/bin/awww-daemon
+-rwxr-xr-x 1 omar omar 49482464 ‏أغس ‏28 ‏00:‏35 uv
+-rwxr-xr-x 1 omar omar   347064 ‏أغس ‏28 ‏00:‏35 uvx
+-rwxr-xr-x 1 omar omar      721 ‏سبت ‏15 ‏11:‏44 ztip

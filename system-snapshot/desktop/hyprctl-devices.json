@@ -1,0 +1,199 @@
+{
+"mice": [
+    {
+        "address": "0x55d8513be9a0",
+        "name": "-------skyloong-gaming-keyboard-mouse",
+        "defaultSpeed": 0.00000,
+        "scrollFactor": -1.00
+    },    {
+        "address": "0x55d8513e6d20",
+        "name": "-------skyloong-gaming-keyboard-consumer-control-1",
+        "defaultSpeed": 0.00000,
+        "scrollFactor": -1.00
+    },    {
+        "address": "0x55d851dd0940",
+        "name": "compx-2.4g-wireless-8k-receiver-mouse",
+        "defaultSpeed": 0.00000,
+        "scrollFactor": -1.00
+    },    {
+        "address": "0x55d85145bac0",
+        "name": "compx-2.4g-wireless-8k-receiver-consumer-control-1",
+        "defaultSpeed": 0.00000,
+        "scrollFactor": -1.00
+    },    {
+        "address": "0x55d85145bf20",
+        "name": "compx-2.4g-wireless-8k-receiver-1",
+        "defaultSpeed": 0.00000,
+        "scrollFactor": -1.00
+    }
+],
+"keyboards": [
+    {
+        "address": "0x55d85139bff0",
+        "name": "video-bus",
+        "rules": "",
+        "model": "",
+        "layout": "us,ara",
+        "variant": ",thal_bksl",
+        "options": "grp:alt_shift_toggle",
+        "active_layout_index": 0,
+        "active_keymap": "English (US)",
+        "capsLock": false,
+        "numLock": true,
+        "main": false
+    },    {
+        "address": "0x55d851dcccf0",
+        "name": "jieli-technology-h888-wireless-headset",
+        "rules": "",
+        "model": "",
+        "layout": "us,ara",
+        "variant": ",thal_bksl",
+        "options": "grp:alt_shift_toggle",
+        "active_layout_index": 0,
+        "active_keymap": "English (US)",
+        "capsLock": false,
+        "numLock": true,
+        "main": false
+    },    {
+        "address": "0x55d851ee38c0",
+        "name": "video-bus-1",
+        "rules": "",
+        "model": "",
+        "layout": "us,ara",
+        "variant": ",thal_bksl",
+        "options": "grp:alt_shift_toggle",
+        "active_layout_index": 0,
+        "active_keymap": "English (US)",
+        "capsLock": false,
+        "numLock": true,
+        "main": false
+    },    {
+        "address": "0x55d851f43a50",
+        "name": "power-button",
+        "rules": "",
+        "model": "",
+        "layout": "us,ara",
+        "variant": ",thal_bksl",
+        "options": "grp:alt_shift_toggle",
+        "active_layout_index": 0,
+        "active_keymap": "English (US)",
+        "capsLock": false,
+        "numLock": true,
+        "main": false
+    },    {
+        "address": "0x55d851f6aa70",
+        "name": "power-button-1",
+        "rules": "",
+        "model": "",
+        "layout": "us,ara",
+        "variant": ",thal_bksl",
+        "options": "grp:alt_shift_toggle",
+        "active_layout_index": 0,
+        "active_keymap": "English (US)",
+        "capsLock": false,
+        "numLock": true,
+        "main": false
+    },    {
+        "address": "0x55d851d42800",
+        "name": "-------skyloong-gaming-keyboard",
+        "rules": "",
+        "model": "",
+        "layout": "us,ara",
+        "variant": ",thal_bksl",
+        "options": "grp:alt_shift_toggle",
+        "active_layout_index": 1,
+        "active_keymap": "Arabic (Thal on backslash)",
+        "capsLock": false,
+        "numLock": true,
+        "main": true
+    },    {
+        "address": "0x55d851d972e0",
+        "name": "-------skyloong-gaming-keyboard-1",
+        "rules": "",
+        "model": "",
+        "layout": "us,ara",
+        "variant": ",thal_bksl",
+        "options": "grp:alt_shift_toggle",
+        "active_layout_index": 0,
+        "active_keymap": "English (US)",
+        "capsLock": false,
+        "numLock": true,
+        "main": false
+    },    {
+        "address": "0x55d851921740",
+        "name": "-------skyloong-gaming-keyboard-system-control",
+        "rules": "",
+        "model": "",
+        "layout": "us,ara",
+        "variant": ",thal_bksl",
+        "options": "grp:alt_shift_toggle",
+        "active_layout_index": 0,
+        "active_keymap": "English (US)",
+        "capsLock": false,
+        "numLock": true,
+        "main": false
+    },    {
+        "address": "0x55d8513c6970",
+        "name": "-------skyloong-gaming-keyboard-consumer-control",
+        "rules": "",
+        "model": "",
+        "layout": "us,ara",
+        "variant": ",thal_bksl",
+        "options": "grp:alt_shift_toggle",
+        "active_layout_index": 0,
+        "active_keymap": "English (US)",
+        "capsLock": false,
+        "numLock": true,
+        "main": false
+    },    {
+        "address": "0x55d851dd0da0",
+        "name": "compx-2.4g-wireless-8k-receiver",
+        "rules": "",
+        "model": "",
+        "layout": "us,ara",
+        "variant": ",thal_bksl",
+        "options": "grp:alt_shift_toggle",
+        "active_layout_index": 0,
+        "active_keymap": "English (US)",
+        "capsLock": false,
+        "numLock": true,
+        "main": false
+    },    {
+        "address": "0x55d851ec8600",
+        "name": "compx-2.4g-wireless-8k-receiver-system-control",
+        "rules": "",
+        "model": "",
+        "layout": "us,ara",
+        "variant": ",thal_bksl",
+        "options": "grp:alt_shift_toggle",
+        "active_layout_index": 0,
+        "active_keymap": "English (US)",
+        "capsLock": false,
+        "numLock": true,
+        "main": false
+    },    {
+        "address": "0x55d852ab0220",
+        "name": "compx-2.4g-wireless-8k-receiver-consumer-control",
+        "rules": "",
+        "model": "",
+        "layout": "us,ara",
+        "variant": ",thal_bksl",
+        "options": "grp:alt_shift_toggle",
+        "active_layout_index": 0,
+        "active_keymap": "English (US)",
+        "capsLock": false,
+        "numLock": true,
+        "main": false
+    }
+],
+"tablets": [
+
+],
+"touch": [
+
+],
+"switches": [
+
+]
+}
+

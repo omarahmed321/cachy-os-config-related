@@ -1,0 +1,1 @@
+8188eu/5.3.9, 7.2.11-1-cachyos, x86_64: installed

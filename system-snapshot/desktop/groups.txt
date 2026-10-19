@@ -1,0 +1,1 @@
+uid=1000(omar) gid=1000(omar) groups=1000(omar),3(sys),90(network),960(nopasswdlogin),980(rfkill),982(users),983(video),985(storage),989(lp),995(audio),998(wheel)

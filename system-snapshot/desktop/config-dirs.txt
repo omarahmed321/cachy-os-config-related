@@ -1,0 +1,83 @@
+total 68
+drwxr-xr-x 1 omar omar 1432 ‏أكت ‏ 7 ‏13:‏02 .
+drwx------ 1 omar omar 1968 ‏أكت ‏19 ‏17:‏19 ..
+drwxr-xr-x 1 omar omar   28 ‏يون ‏21 ‏17:‏11 alacritty
+drwxr-xr-x 1 omar omar   76 ‏أغس ‏12 ‏19:‏01 .android
+drwx------ 1 omar omar 1046 ‏أكت ‏19 ‏13:‏20 Antigravity
+-rw-r--r-- 1 omar omar   33 ‏يول ‏30 ‏14:‏19 antigravity-ide-flags.conf
+drwxr-xr-x 1 omar omar   56 ‏يول ‏25 ‏17:‏48 autostart
+-rw-r--r-- 1 omar omar   40 ‏يون ‏21 ‏17:‏52 baloofilerc
+drwxr-xr-x 1 omar omar   30 ‏يون ‏21 ‏17:‏16 btop
+drwxr-xr-x 1 omar omar   26 ‏يون ‏21 ‏17:‏15 cachyos
+-rw-r--r-- 1 omar omar   15 ‏يون ‏21 ‏17:‏16 cachyos-hello.json
+drwxr-xr-x 1 omar omar   28 ‏أغس ‏12 ‏18:‏52 capacitor
+drwxr-xr-x 1 omar omar   56 ‏أغس ‏21 ‏12:‏49 cava
+drwxr-xr-x 1 omar omar  684 ‏يون ‏21 ‏17:‏29 cfg_backups
+drwx------ 1 omar omar 1292 ‏سبت ‏23 ‏13:‏36 chromium
+-rw-r--r-- 1 omar omar  376 ‏سبت ‏12 ‏22:‏10 chromium-flags.conf
+drwx------ 1 omar omar    0 ‏سبت ‏12 ‏22:‏13 chromium-headless
+drwx------ 1 omar omar 1882 ‏أكت ‏19 ‏17:‏18 Claude
+drwxr-xr-x 1 omar omar   26 ‏يول ‏12 ‏19:‏50 Code
+-rw-r--r-- 1 omar omar   44 ‏يون ‏21 ‏17:‏52 code-flags.conf
+drwxr-xr-x 1 omar omar 1092 ‏أكت ‏ 7 ‏14:‏43 Code - OSS
+drwxr-xr-x 1 omar omar   22 ‏سبت ‏ 6 ‏13:‏59 create-next-app-nodejs
+drwxr-xr-x 1 omar omar   10 ‏سبت ‏16 ‏13:‏13 CurseForge
+drwx------ 1 omar omar    8 ‏أكت ‏19 ‏17:‏17 dconf
+drwxr-xr-x 1 omar omar  878 ‏سبت ‏15 ‏18:‏28 discord
+-rw-r--r-- 1 omar omar  213 ‏أكت ‏ 7 ‏13:‏02 dolphinrc
+drwxr-xr-x 1 omar omar   70 ‏أغس ‏21 ‏12:‏49 dunst
+drwx------ 1 omar omar  232 ‏أغس ‏17 ‏21:‏03 equibop
+drwxr-xr-x 1 omar omar   88 ‏سبت ‏15 ‏12:‏36 Equicord
+drwxr-xr-x 1 omar omar   66 ‏يول ‏ 5 ‏20:‏29 fastfetch
+drwxr-xr-x 1 omar omar  102 ‏سبت ‏13 ‏10:‏42 fish
+drwxr-x--x 1 omar omar   38 ‏يون ‏21 ‏18:‏03 gh
+drwx------ 1 omar omar   26 ‏سبت ‏ 8 ‏20:‏46 google-chrome-for-testing
+drwxr-xr-x 1 omar omar   62 ‏أكت ‏19 ‏13:‏19 gtk-3.0
+lrwxrwxrwx 1 omar omar   38 ‏أغس ‏ 9 ‏17:‏31 gtk-4.0 -> /home/omar/.themes/Nordic-Blue/gtk-4.0
+-rw-r--r-- 1 omar omar   50 ‏أغس ‏30 ‏19:‏51 hotspot_config
+drwxr-xr-x 1 omar omar   46 ‏أغس ‏ 9 ‏17:‏31 hyde
+drwxr-xr-x 1 omar omar  486 ‏يول ‏31 ‏20:‏37 hypr
+-rw-r--r-- 1 omar omar 3478 ‏أغس ‏ 9 ‏17:‏31 kdeglobals
+drwxr-xr-x 1 omar omar  116 ‏أغس ‏21 ‏12:‏49 kitty
+drwxr-xr-x 1 omar omar   48 ‏يون ‏21 ‏17:‏52 Kvantum
+-rw-r--r-- 1 omar omar  717 ‏يون ‏21 ‏17:‏52 libinput-gestures.conf
+drwx------ 1 omar omar 1792 ‏أغس ‏20 ‏11:‏48 Local
+drwxr-xr-x 1 omar omar   64 ‏يون ‏21 ‏17:‏52 lsd
+drwxr-xr-x 1 omar omar   26 ‏يون ‏21 ‏17:‏52 MangoHud
+drwxr-xr-x 1 omar omar   34 ‏يون ‏21 ‏17:‏11 menus
+drwxr-xr-x 1 omar omar  116 ‏سبت ‏15 ‏11:‏26 micro
+-rw-r--r-- 1 omar omar 1141 ‏أكت ‏ 7 ‏09:‏55 mimeapps.list
+drwxr-xr-x 1 omar omar   14 ‏يون ‏21 ‏17:‏17 mozilla
+drwxr-xr-x 1 omar omar   22 ‏يون ‏29 ‏22:‏32 nextjs-nodejs
+drwxr-xr-x 1 omar omar  110 ‏يون ‏21 ‏17:‏32 noctalia
+drwxr-xr-x 1 omar omar   12 ‏يون ‏21 ‏17:‏52 nwg-look
+drwx------ 1 omar omar  802 ‏أكت ‏19 ‏16:‏36 obsidian
+drwxr-xr-x 1 omar omar  130 ‏يول ‏ 5 ‏22:‏58 opencode
+drwxr-xr-x 1 omar omar   80 ‏سبت ‏ 1 ‏14:‏07 ow-electron
+drwxr-xr-x 1 omar omar   30 ‏يول ‏ 3 ‏23:‏47 pipewire
+drwx------ 1 omar omar   12 ‏يون ‏21 ‏17:‏32 pulse
+drwxr-xr-x 1 omar omar   54 ‏أغس ‏21 ‏12:‏49 qt5ct
+drwxr-xr-x 1 omar omar   54 ‏أغس ‏ 9 ‏17:‏31 qt6ct
+drwxr-xr-x 1 omar omar  196 ‏أغس ‏21 ‏12:‏49 rofi
+drwxr-xr-x 1 omar omar   46 ‏أكت ‏ 8 ‏21:‏05 session
+-rw-r--r-- 1 omar omar   52 ‏يول ‏28 ‏23:‏08 settings
+-rw-r--r-- 1 omar omar   30 ‏يون ‏21 ‏17:‏52 spotify-flags.conf
+drwxr-xr-x 1 omar omar   12 ‏يون ‏21 ‏18:‏02 swappy
+drwxr-xr-x 1 omar omar   12 ‏يون ‏21 ‏17:‏52 swaylock
+drwxr-xr-x 1 omar omar    8 ‏يون ‏21 ‏17:‏27 systemd
+-rw-r--r-- 1 omar omar   76 ‏يول ‏28 ‏17:‏12 tool_state
+-rw------- 1 omar omar   21 ‏يول ‏30 ‏17:‏50 trashrc
+-rw------- 1 omar omar  667 ‏يون ‏21 ‏17:‏15 user-dirs.dirs
+-rw-r--r-- 1 omar omar    5 ‏يون ‏21 ‏17:‏15 user-dirs.locale
+drwxr-xr-x 1 omar omar   30 ‏أغس ‏28 ‏16:‏07 uv
+drwxr-xr-x 1 omar omar    6 ‏يون ‏21 ‏17:‏11 uwsm
+drwxr-xr-x 1 omar omar  204 ‏سبت ‏30 ‏14:‏08 vercel-plugin
+drwxr-xr-x 1 omar omar   42 ‏يول ‏ 4 ‏16:‏32 wal
+drwxr-xr-x 1 omar omar  216 ‏أغس ‏21 ‏12:‏49 waybar
+drwxr-xr-x 1 omar omar   86 ‏يون ‏21 ‏17:‏52 wlogout
+drwxr-xr-x 1 omar omar   24 ‏سبت ‏ 1 ‏18:‏49 world-host-mod
+drwxr-xr-x 1 omar omar   66 ‏أغس ‏ 7 ‏15:‏18 xdg-desktop-portal
+drwxr-xr-x 1 omar omar   30 ‏يون ‏21 ‏17:‏11 xsettingsd
+drwxr-xr-x 1 omar omar    0 ‏يول ‏ 6 ‏04:‏58 yay
+drwxr-xr-x 1 omar omar   78 ‏أغس ‏ 4 ‏18:‏56 yazi
+drwx------ 1 omar omar  202 ‏أكت ‏19 ‏17:‏09 zen

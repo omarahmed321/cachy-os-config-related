@@ -1,0 +1,17 @@
+NAME          SIZE TYPE FSTYPE MOUNTPOINT
+sda         465.8G disk        
+└─sda1      465.8G part ntfs   
+sdb         447.1G disk        
+└─sdb1      447.1G part ntfs   
+sdc         465.8G disk        
+├─sdc1      460.9G part ntfs   
+└─sdc2        4.9G part vfat   
+sdd         111.8G disk        
+├─sdd1      106.9G part btrfs  /var/log
+└─sdd2        4.9G part vfat   /boot
+zram0        31.2G disk swap   [SWAP]
+nvme0n1     931.5G disk        
+├─nvme0n1p1    16M part        
+├─nvme0n1p2   174G part ntfs   
+├─nvme0n1p3   897M part ntfs   
+└─nvme0n1p4 756.6G part ntfs   

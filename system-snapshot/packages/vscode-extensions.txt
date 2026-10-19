@@ -1,0 +1,12 @@
+Warning: 'ozone-platform-hint' is not in the list of known options, but still passed to Electron/Chromium.
+bradlc.vscode-tailwindcss
+brandonkirbyson.vscode-animations
+drcika.apc-extension
+dsznajder.es7-react-js-snippets
+esbenp.prettier-vscode
+formulahendry.auto-close-tag
+formulahendry.auto-rename-tag
+jdinhlife.gruvbox
+pkief.material-icon-theme
+prettier.prettier-vscode
+undefined_publisher.wallbash

@@ -1,0 +1,7 @@
+claude-code-url-handler.desktop
+com.anthropic.Claude.desktop
+hypr-display-settings.desktop
+m913-gui.desktop
+mimeinfo.cache
+nightlight-gui.desktop
+redragon-controlhub.desktop

@@ -1,0 +1,14 @@
+cachyos-mirrorlist
+cachyos-mirrorlist-backup
+cachyos-mirrorlist.pacnew
+cachyos-v3-mirrorlist
+cachyos-v3-mirrorlist-backup
+cachyos-v3-mirrorlist.pacnew
+cachyos-v4-mirrorlist
+cachyos-v4-mirrorlist-backup
+cachyos-v4-mirrorlist.pacnew
+gnupg
+hooks
+mirrorlist
+mirrorlist-backup
+mirrorlist.pacnew

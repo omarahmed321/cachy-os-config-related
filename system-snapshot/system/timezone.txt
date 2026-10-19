@@ -1,0 +1,7 @@
+Timezone=Africa/Cairo
+LocalRTC=no
+CanNTP=yes
+NTP=yes
+NTPSynchronized=yes
+TimeUSec=Mon 2026-10-19 17:19:23 EEST
+RTCTimeUSec=Mon 2026-10-19 14:19:23 UTC

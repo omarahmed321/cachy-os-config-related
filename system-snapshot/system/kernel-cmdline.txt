@@ -1,0 +1,1 @@
+quiet nowatchdog splash rw rootflags=subvol=/@ root=UUID=519b0659-55a2-4306-a7e0-1b6fc94d32f4

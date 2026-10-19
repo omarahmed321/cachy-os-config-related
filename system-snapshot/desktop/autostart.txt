@@ -1,0 +1,14 @@
+/etc/xdg/autostart:
+at-spi-dbus-bus.desktop
+baloo_file.desktop
+blueman.desktop
+gnome-keyring-pkcs11.desktop
+gnome-keyring-secrets.desktop
+limine-restore-notify.desktop
+limine-snapper-notify.desktop
+nm-applet.desktop
+polkit-kde-authentication-agent-1.desktop
+xdg-user-dirs.desktop
+
+/home/omar/.config/autostart:
+polkit-agent-localwp.desktop

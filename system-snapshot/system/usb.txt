@@ -1,0 +1,11 @@
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 001 Device 003: ID 4c4a:4155 Jieli Technology H888 Wireless headset
+Bus 001 Device 004: ID 1d6c:0103 Fantech Fantech Luminous C30
+Bus 001 Device 006: ID 3151:5029        Skyloong Gaming Keyboard
+Bus 002 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+Bus 003 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 003 Device 002: ID 2357:010c TP-Link TL-WN722N v2/v3 [Realtek RTL8188EUS]
+Bus 004 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+Bus 005 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 005 Device 007: ID 3554:fb35 Compx 2.4G Wireless 8K Receiver
+Bus 006 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub

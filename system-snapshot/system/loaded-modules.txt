@@ -1,0 +1,114 @@
+Module                  Size  Used by
+snd_seq_dummy          16384  0
+snd_hrtimer            16384  1
+snd_seq               139264  7 snd_seq_dummy
+vfat                   24576  1
+fat                   110592  1 vfat
+amd_atl                61440  1
+intel_rapl_msr         24576  0
+intel_rapl_common      53248  1 intel_rapl_msr
+kvm_amd               270336  0
+snd_hda_codec_alc662    20480  1
+8188eu               1773568  0
+snd_hda_codec_realtek_lib    73728  1 snd_hda_codec_alc662
+ee1004                 16384  0
+kvm                  1564672  1 kvm_amd
+ppdev                  24576  0
+snd_hda_codec_generic   126976  2 snd_hda_codec_alc662,snd_hda_codec_realtek_lib
+snd_hda_codec_nvhdmi    16384  1
+snd_hda_codec_atihdmi    20480  1
+irqbypass              16384  1 kvm
+cfg80211             1617920  1 8188eu
+snd_hda_codec_hdmi     61440  2 snd_hda_codec_nvhdmi,snd_hda_codec_atihdmi
+r8169                 180224  0
+aesni_intel           102400  0
+realtek                65536  1
+gf128mul               12288  1 aesni_intel
+rfkill                 45056  8 cfg80211
+wmi_bmof               12288  0
+uvcvideo              184320  0
+snd_hda_intel          69632  3
+pcspkr                 12288  0
+rapl                   20480  0
+phy_package            16384  1 realtek
+uvc                    12288  1 uvcvideo
+snd_usb_audio         655360  4
+mdio_devres            12288  1 r8169
+snd_hda_codec         241664  7 snd_hda_codec_generic,snd_hda_codec_hdmi,snd_hda_intel,snd_hda_codec_alc662,snd_hda_codec_nvhdmi,snd_hda_codec_realtek_lib,snd_hda_codec_atihdmi
+videobuf2_vmalloc      20480  1 uvcvideo
+i2c_piix4              36864  0
+libphy                237568  4 r8169,mdio_devres,realtek,phy_package
+k10temp                12288  0
+snd_usbmidi_lib        57344  1 snd_usb_audio
+videobuf2_memops       16384  1 videobuf2_vmalloc
+snd_hda_core          159744  7 snd_hda_codec_generic,snd_hda_codec_hdmi,snd_hda_intel,snd_hda_codec_alc662,snd_hda_codec,snd_hda_codec_realtek_lib,snd_hda_codec_atihdmi
+ccp                   233472  1 kvm_amd
+mdio_bus               32768  4 r8169,libphy,realtek,phy_package
+snd_ump                40960  1 snd_usb_audio
+videobuf2_v4l2         45056  1 uvcvideo
+i2c_smbus              20480  1 i2c_piix4
+snd_intel_dspcfg       49152  1 snd_hda_intel
+videobuf2_common       98304  4 videobuf2_vmalloc,videobuf2_v4l2,uvcvideo,videobuf2_memops
+snd_rawmidi            53248  2 snd_usbmidi_lib,snd_ump
+snd_intel_sdw_acpi     16384  1 snd_intel_dspcfg
+snd_seq_device         16384  3 snd_seq,snd_ump,snd_rawmidi
+snd_hwdep              24576  2 snd_usb_audio,snd_hda_codec
+videodev              438272  2 videobuf2_v4l2,uvcvideo
+mousedev               28672  0
+joydev                 28672  0
+snd_pcm               233472  7 snd_hda_codec_hdmi,snd_hda_intel,snd_usb_audio,snd_hda_codec,snd_hda_core
+mc                     94208  5 videodev,snd_usb_audio,videobuf2_v4l2,uvcvideo,videobuf2_common
+snd_timer              57344  3 snd_seq,snd_hrtimer,snd_pcm
+gpio_amdpt             16384  0
+parport_pc             81920  0
+snd                   163840  28 snd_hda_codec_generic,snd_seq,snd_seq_device,snd_hda_codec_hdmi,snd_hwdep,snd_hda_intel,snd_usb_audio,snd_usbmidi_lib,snd_hda_codec,snd_timer,snd_hda_codec_realtek_lib,snd_ump,snd_pcm,snd_rawmidi
+parport                86016  2 parport_pc,ppdev
+gpio_generic           24576  1 gpio_amdpt
+soundcore              16384  1 snd
+mac_hid                12288  0
+ip6t_REJECT            12288  1
+nf_reject_ipv6         20480  1 ip6t_REJECT
+xt_hl                  12288  22
+ip6t_rt                16384  3
+ipt_REJECT             12288  1
+nf_reject_ipv4         16384  1 ipt_REJECT
+xt_LOG                 16384  8
+nf_log_syslog          28672  8
+nft_limit              16384  11
+xt_limit               12288  0
+xt_addrtype            12288  4
+xt_tcpudp              20480  60
+nft_chain_nat          12288  1
+xt_MASQUERADE          16384  2
+nf_nat                 65536  2 nft_chain_nat,xt_MASQUERADE
+xt_conntrack           12288  20
+nf_conntrack          212992  3 xt_conntrack,nf_nat,xt_MASQUERADE
+nf_defrag_ipv6         24576  1 nf_conntrack
+nf_defrag_ipv4         12288  1 nf_conntrack
+nft_compat             20480  121
+x_tables               69632  11 xt_conntrack,nft_compat,xt_LOG,xt_tcpudp,xt_addrtype,ip6t_rt,ipt_REJECT,xt_limit,xt_hl,xt_MASQUERADE,ip6t_REJECT
+nf_tables             405504  665 nft_compat,nft_chain_nat,nft_limit
+ntsync                 20480  0
+crypto_user            12288  0
+pkcs8_key_parser       12288  0
+dm_mod                229376  0
+i2c_dev                24576  0
+zram                   81920  1
+842_decompress         16384  1 zram
+842_compress           24576  1 zram
+lz4hc_compress         20480  1 zram
+nvidia_drm            184320  59
+drm_ttm_helper         20480  1 nvidia_drm
+ttm                   159744  1 drm_ttm_helper
+drm_display_helper    307200  1 nvidia_drm
+cec                   102400  1 drm_display_helper
+nvidia_uvm           2383872  0
+nvme                   77824  0
+nvidia_modeset       1908736  17 nvidia_drm
+nvme_core             299008  1 nvme
+nvme_keyring           20480  1 nvme_core
+nvme_auth              36864  1 nvme_core
+nvidia              17682432  418 nvidia_uvm,nvidia_modeset
+video                  81920  1 nvidia_modeset
+wmi                    45056  2 video,wmi_bmof
+aead                   16384  2 nvidia,aesni_intel

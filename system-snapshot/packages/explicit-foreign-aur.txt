@@ -1,0 +1,12 @@
+8188eu-dkms
+antigravity
+antigravity-cli
+antigravity-ide
+bibata-cursor-theme-bin
+create_ap
+icu70
+localwp
+minecraft-launcher
+opencode-bin
+python-pywal
+sddm-astronaut-theme

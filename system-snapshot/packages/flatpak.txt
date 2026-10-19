@@ -1,0 +1,7 @@
+com.hypixel.HytaleLauncher	hytalelauncher1-origin
+org.freedesktop.Platform.GL.default	flathub
+org.freedesktop.Platform.GL.default	flathub
+org.freedesktop.Platform.GL.nvidia-610-57-04	flathub
+org.freedesktop.Platform.VAAPI.nvidia	flathub
+org.freedesktop.Platform.codecs-extra	flathub
+org.gnome.Platform	flathub

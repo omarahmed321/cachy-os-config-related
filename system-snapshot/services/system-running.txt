@@ -1,0 +1,27 @@
+  UNIT                          LOAD   ACTIVE SUB     DESCRIPTION
+  ananicy-cpp.service           loaded active running Ananicy-Cpp - ANother Auto NICe daemon in C++
+  avahi-daemon.service          loaded active running Avahi mDNS/DNS-SD Stack
+  dbus-broker.service           loaded active running D-Bus System Message Bus
+  NetworkManager.service        loaded active running Network Manager
+  nvidia-persistenced.service   loaded active running NVIDIA Persistence Daemon
+  polkit.service                loaded active running Authorization Manager
+  power-profiles-daemon.service loaded active running Power Profiles daemon
+  sddm.service                  loaded active running Simple Desktop Display Manager
+  systemd-journald.service      loaded active running Journal Service
+  systemd-localed.service       loaded active running Locale Service
+  systemd-logind.service        loaded active running User Login Management
+  systemd-oomd.service          loaded active running Userspace Out-Of-Memory (OOM) Killer
+  systemd-resolved.service      loaded active running Network Name Resolution
+  systemd-timedated.service     loaded active running Time & Date Service
+  systemd-timesyncd.service     loaded active running Network Time Synchronization
+  systemd-udevd.service         loaded active running Rule-based Manager for Device Events and Files
+  systemd-userdbd.service       loaded active running User Database Manager
+  udisks2.service               loaded active running Disk Manager
+  upower.service                loaded active running Daemon for power management
+  user@1000.service             loaded active running User Manager for UID 1000
+
+Legend: LOAD   → Reflects whether the unit definition was properly loaded.
+        ACTIVE → The high-level unit activation state, i.e. generalization of SUB.
+        SUB    → The low-level unit activation state, values depend on unit type.
+
+20 loaded units listed.
