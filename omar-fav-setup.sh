@@ -2,7 +2,7 @@
 #===============================================================================
 #   Omar's Favorite Setup Controller (omar-fav-setup)
 #   Part of: CachyOS + HyDE System Restorer
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 #
 #   Function:
 #     1. Applies 3-Island Glassmorphism Waybar layout

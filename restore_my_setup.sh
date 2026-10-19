@@ -16,7 +16,9 @@ BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd)"
-[ -z "$SCRIPT_DIR" -o "$SCRIPT_DIR" = "/bin" ] && SCRIPT_DIR="$HOME/cachyos-restore"
+if [ -z "$SCRIPT_DIR" ] || [ "$SCRIPT_DIR" = "/bin" ]; then
+    SCRIPT_DIR="$HOME/cachy-os-config-related"
+fi
 
 # Header block
 echo -e "${CYAN}${BOLD}"
@@ -225,13 +227,13 @@ read -p "Select choice [1-5] (Default 1): " gpu_choice
 gpu_choice="${gpu_choice:-1}"
 
 GPU_VENDOR="$AUTO_GPU"
-if [ "$gpu_choice" -eq 2 ]; then
+if [ "$gpu_choice" = "2" ]; then
     GPU_VENDOR="nvidia"
-elif [ "$gpu_choice" -eq 3 ]; then
+elif [ "$gpu_choice" = "3" ]; then
     GPU_VENDOR="amd"
-elif [ "$gpu_choice" -eq 4 ]; then
+elif [ "$gpu_choice" = "4" ]; then
     GPU_VENDOR="intel"
-elif [ "$gpu_choice" -eq 5 ]; then
+elif [ "$gpu_choice" = "5" ]; then
     GPU_VENDOR="skip"
 fi
 echo -e "Using GPU driver configuration for: ${CYAN}${GPU_VENDOR}${NC}"
@@ -515,7 +517,7 @@ echo -e "2) Configure new SSID and Password"
 read -p "Choose option [1-2] (Default 1): " choice
 choice="${choice:-1}"
 
-if [ "$choice" -eq 2 ]; then
+if [ "$choice" = "2" ]; then
     read -p "Enter new SSID (Press Enter for default '$SSID'): " new_ssid
     SSID="${new_ssid:-$SSID}"
     while true; do
@@ -533,10 +535,9 @@ if [ "$choice" -eq 2 ]; then
     save_choice="${save_choice:-y}"
     if [[ "$save_choice" =~ ^[Yy]$ ]]; then
         mkdir -p "$CONFIG_DIR"
-        echo "SAVED_SSID=\"$SSID\"" > "$CONFIG_FILE"
-        echo "SAVED_PASS=\"$PASSPHRASE\"" >> "$CONFIG_FILE"
+        printf 'SAVED_SSID=%q\nSAVED_PASS=%q\n' "$SSID" "$PASSPHRASE" > "$CONFIG_FILE"
         if [ -n "$SUDO_USER" ]; then
-            chown -R "$SUDO_USER:" "$CONFIG_DIR" 2>/dev/null || true
+            chown "$SUDO_USER:" "$CONFIG_DIR" "$CONFIG_FILE" 2>/dev/null || true
         fi
         echo -e "${GREEN}[+] Configuration saved!${NC}"
         sleep 1
@@ -617,7 +618,7 @@ if ! command -v create_ap &>/dev/null; then
     if command -v pacman &>/dev/null; then
         # Try to install dependency chain
         pacman -S --needed --noconfirm dnsmasq hostapd iw psmisc haveged iptables || true
-        if [ -n "$SUDO_USER" ] && command -v sudo -u "$SUDO_USER" yay &>/dev/null; then
+        if [ -n "$SUDO_USER" ] && sudo -u "$SUDO_USER" bash -c 'command -v yay' &>/dev/null; then
             sudo -u "$SUDO_USER" yay -S --needed --noconfirm linux-wifi-hotspot || true
         fi
     fi
@@ -1288,7 +1289,7 @@ cat << 'NLEOF' > "$HOME/.local/share/bin/nightlight-gui.py"
 # =============================================================================
 #   Night Light GUI for Hyprland (hyprsunset)
 #   Part of: CachyOS + HyDE Complete System Restorer
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 #
 #   Two modes:
 #     python3 nightlight-gui.py           → normal settings panel
@@ -1635,7 +1636,7 @@ class NightLightWindow(Adw.ApplicationWindow):
 # =============================================================================
 #   Night Light & Brightness GUI Panel (Hyprland / hyprsunset)
 #   Part of: CachyOS + HyDE System Restorer
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 # =============================================================================
 
 import gi
@@ -2741,7 +2742,7 @@ if command -v hyprctl &>/dev/null && hyprctl monitors &>/dev/null; then
             done
 
             SELECTED_PRIMARY=""
-            if command -v zenity &>/dev/null && [ -n "$WAYLAND_DISPLAY" -o -n "$DISPLAY" ]; then
+            if command -v zenity &>/dev/null && { [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; }; then
                 SELECTED_PRIMARY=$(zenity --list \
                     --title="Primary Screen Selection" \
                     --text="Multiple monitors detected.\nWhich display is your PRIMARY screen?" \
@@ -2762,7 +2763,7 @@ if command -v hyprctl &>/dev/null && hyprctl monitors &>/dev/null; then
 
             # Ask position relative to secondary monitor (RIGHT or LEFT)
             PRIMARY_POSITION="RIGHT"
-            if command -v zenity &>/dev/null && [ -n "$WAYLAND_DISPLAY" -o -n "$DISPLAY" ]; then
+            if command -v zenity &>/dev/null && { [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; }; then
                 POS_CHOICE=$(zenity --list \
                     --title="Primary Screen Placement" \
                     --text="Where is your PRIMARY screen ($MAIN_NAME) positioned relative to your secondary screen ($SIDE_NAME)?" \
@@ -2777,7 +2778,7 @@ if command -v hyprctl &>/dev/null && hyprctl monitors &>/dev/null; then
 
             # Ask SDDM Screen Target
             SELECTED_SDDM=""
-            if command -v zenity &>/dev/null && [ -n "$WAYLAND_DISPLAY" -o -n "$DISPLAY" ]; then
+            if command -v zenity &>/dev/null && { [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; }; then
                 SELECTED_SDDM=$(zenity --list \
                     --title="SDDM Login Screen Display" \
                     --text="Which monitor should the SDDM Login Screen appear on?" \
@@ -2811,7 +2812,7 @@ if command -v hyprctl &>/dev/null && hyprctl monitors &>/dev/null; then
 
             # Ask Initial Boot Cursor Screen Target
             SELECTED_CURSOR=""
-            if command -v zenity &>/dev/null && [ -n "$WAYLAND_DISPLAY" -o -n "$DISPLAY" ]; then
+            if command -v zenity &>/dev/null && { [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; }; then
                 SELECTED_CURSOR=$(zenity --list \
                     --title="Initial Boot Cursor Screen" \
                     --text="Which display should the mouse cursor default to on initial boot?" \
@@ -3072,8 +3073,8 @@ if [ -n "$SIDE_NAME" ]; then
             ALIGN_SCRIPT=""
             if [ -f "$SCRIPT_DIR/monitor-alignment.sh" ]; then
                 ALIGN_SCRIPT="$SCRIPT_DIR/monitor-alignment.sh"
-            elif [ -f "$HOME/cachyos-restore/monitor-alignment.sh" ]; then
-                ALIGN_SCRIPT="$HOME/cachyos-restore/monitor-alignment.sh"
+            elif [ -f "$HOME/cachy-os-config-related/monitor-alignment.sh" ]; then
+                ALIGN_SCRIPT="$HOME/cachy-os-config-related/monitor-alignment.sh"
             elif [ -f "$HOME/.local/share/bin/monitor-alignment.sh" ]; then
                 ALIGN_SCRIPT="$HOME/.local/share/bin/monitor-alignment.sh"
             fi
@@ -4241,14 +4242,17 @@ if [ -d "${SRC_DIRS[0]}" ]; then
     echo -e "Found driver source directory: ${CYAN}$DRIVER_DIR${NC} (Version: ${CYAN}$DRIVER_VER${NC})"
     
     # Locate patch_driver.py
-    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    PATCH_SCRIPT=""
     if [ -f "$SCRIPT_DIR/patch_driver.py" ]; then
         PATCH_SCRIPT="$SCRIPT_DIR/patch_driver.py"
     else
         # If script is run via curl or in a temp location, fetch patch_driver.py from remote repo
         echo -e "${CYAN}Downloading patch_driver.py from GitHub repository...${NC}"
-        curl -sSL -o /tmp/patch_driver.py https://raw.githubusercontent.com/omarahmed321/cachyos-restore/main/patch_driver.py || wget -q -O /tmp/patch_driver.py https://raw.githubusercontent.com/omarahmed321/cachyos-restore/main/patch_driver.py
-        PATCH_SCRIPT="/tmp/patch_driver.py"
+        PATCH_URL="https://raw.githubusercontent.com/omarahmed321/cachy-os-config-related/main/patch_driver.py"
+        PATCH_TMP="$(mktemp --suffix=.py)"
+        if curl -fsSL -o "$PATCH_TMP" "$PATCH_URL" || wget -q -O "$PATCH_TMP" "$PATCH_URL"; then
+            PATCH_SCRIPT="$PATCH_TMP"
+        fi
     fi
     
     # Run patch script
@@ -4728,7 +4732,6 @@ if [ -f "$HOME/.local/share/bin/themeswitch.sh" ]; then
 fi
 
 # Copy default wallpaper from script directory to the theme wallpapers directory
-SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 if [ -f "$SCRIPT_DIR/wallpapers/background_for_me.jpg" ]; then
     echo -e "${CYAN}Deploying custom wallpaper background_for_me.jpg...${NC}"
     mkdir -p "$HOME/.config/hyde/themes/Gruvbox Retro/wallpapers"
@@ -5393,7 +5396,6 @@ echo -e "\n${MAGENTA}${BOLD}Appearance & Theme:${NC}"
 echo -e "  ${YELLOW}omar-fav-setup.sh${NC}            : Apply Glassmorphism Waybar & wallpaper"
 echo -e "  ${YELLOW}setup-waybar-glassmorphism.sh${NC}: Configure 3-island floating Waybar"
 echo -e "  ${YELLOW}setup-notifications-theme.py${NC} : Customize Dunst notification popups"
-echo -e "  ${YELLOW}setup-zen-mode.sh${NC}            : Toggle minimal Zen Mode (hide Waybar, zero gaps)"
 
 echo -e "\n${BLUE}${BOLD}Display, Screen & Cursor:${NC}"
 echo -e "  ${CYAN}hypr-display-settings.py${NC}     : Resolution, custom Hz text entry, scaling & mouse"
@@ -5439,7 +5441,7 @@ fi
 # Deploy all unified repo scripts to user bin
 if [ -d "$SCRIPT_DIR" ]; then
     mkdir -p "$HOME/.local/share/bin"
-    for tool in cachy_tools_menu.sh omar-fav-setup.sh setup-wordpress-local.sh fix-polkit-localwp.sh setup-waybar-glassmorphism.sh hypr-display-settings.py nightlight-gui.py sddm-screen-config.py setup-task-manager.sh task-manager-gui.py setup-notifications-theme.py setup-zen-browser-theme.sh setup-initial-cursor-screen.py interactive_restore.sh doing donetask todo rmtask edittask manage_tasks.py omar; do
+    for tool in cachy_tools_menu.sh omar-fav-setup.sh setup-wordpress-local.sh fix-polkit-localwp.sh setup-waybar-glassmorphism.sh hypr-display-settings.py nightlight-gui.py sddm-screen-config.py setup-sddm-screen.sh setup_clipboard.sh setup_arabic_keyboard.sh setup-task-manager.sh task-manager-gui.py setup-notifications-theme.py setup-zen-browser-theme.sh setup-initial-cursor-screen.py interactive_restore.sh doing donetask todo rmtask edittask manage_tasks.py omar; do
         if [ -f "$SCRIPT_DIR/$tool" ]; then
             cp "$SCRIPT_DIR/$tool" "$HOME/.local/share/bin/"
             chmod +x "$HOME/.local/share/bin/$tool"

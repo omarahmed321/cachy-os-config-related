@@ -21,6 +21,12 @@ def write_tasks(tasks):
         for t in tasks:
             f.write(t + "\n")
 
+def strip_prefix(task):
+    for pfx in ["[ ]", "[/]", "[x]", "- "]:
+        if task.startswith(pfx):
+            return task[len(pfx):].strip()
+    return task
+
 def add_or_update(task_text, new_prefix):
     tasks = read_tasks()
     found = False
@@ -68,7 +74,10 @@ def main():
         add_or_update(target_task, "[x]")
     elif action == "remove":
         tasks = read_tasks()
-        new_tasks = [t for t in tasks if t.strip().lower() != target_task.strip().lower() and target_task.strip().lower() not in t.lower()]
+        # Exact match only: a substring match would also delete unrelated tasks
+        # (removing "test" must not remove "[ ] test website").
+        query = target_task.strip().lower()
+        new_tasks = [t for t in tasks if t.strip().lower() != query and strip_prefix(t).lower() != query]
         write_tasks(new_tasks)
     elif action == "edit_text":
         if len(sys.argv) >= 4:
@@ -81,7 +90,7 @@ def main():
                     pfx = "[ ]"
                     for p in ["[ ]", "[/]", "[x]", "- "]:
                         if t.startswith(p):
-                            pfx = p
+                            pfx = p.strip()
                             break
                     new_tasks.append(f"{pfx} {new_text.strip()}")
                 else:

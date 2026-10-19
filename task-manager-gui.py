@@ -2,12 +2,11 @@
 # =============================================================================
 #   Interactive Task Manager GUI Picker (doing / donetask / rmtask / edittask)
 #   Part of: CachyOS + HyDE System Restorer
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 # =============================================================================
 
 import os
 import sys
-import subprocess
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 

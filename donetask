@@ -12,10 +12,10 @@ if [ -z "$1" ]; then
     rm -f "$TMP_OUT"
     
     if [ -n "$SELECTED" ]; then
-        python3 "$HOME/.local/share/bin/manage_tasks.py" done "$SELECTED"
+        python3 "$HOME/.local/share/bin/manage_tasks.py" "done" "$SELECTED"
         fastfetch
     fi
 else
-    python3 "$HOME/.local/share/bin/manage_tasks.py" done "$@"
+    python3 "$HOME/.local/share/bin/manage_tasks.py" "done" "$@"
     fastfetch
 fi

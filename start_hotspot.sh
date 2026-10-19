@@ -77,7 +77,7 @@ echo -e "2) Configure new SSID and Password"
 read -p "Choose option [1-2] (Default 1): " choice
 choice="${choice:-1}"
 
-if [ "$choice" -eq 2 ]; then
+if [ "$choice" = "2" ]; then
     read -p "Enter new SSID (Press Enter for default '$SSID'): " new_ssid
     SSID="${new_ssid:-$SSID}"
     while true; do
@@ -95,10 +95,9 @@ if [ "$choice" -eq 2 ]; then
     save_choice="${save_choice:-y}"
     if [[ "$save_choice" =~ ^[Yy]$ ]]; then
         mkdir -p "$CONFIG_DIR"
-        echo "SAVED_SSID=\"$SSID\"" > "$CONFIG_FILE"
-        echo "SAVED_PASS=\"$PASSPHRASE\"" >> "$CONFIG_FILE"
+        printf 'SAVED_SSID=%q\nSAVED_PASS=%q\n' "$SSID" "$PASSPHRASE" > "$CONFIG_FILE"
         if [ -n "$SUDO_USER" ]; then
-            chown -R "$SUDO_USER:" "$CONFIG_DIR" 2>/dev/null || true
+            chown "$SUDO_USER:" "$CONFIG_DIR" "$CONFIG_FILE" 2>/dev/null || true
         fi
         echo -e "${GREEN}[+] Configuration saved!${NC}"
         sleep 1
@@ -179,7 +178,7 @@ if ! command -v create_ap &>/dev/null; then
     if command -v pacman &>/dev/null; then
         # Try to install dependency chain
         pacman -S --needed --noconfirm dnsmasq hostapd iw psmisc haveged iptables || true
-        if [ -n "$SUDO_USER" ] && command -v sudo -u "$SUDO_USER" yay &>/dev/null; then
+        if [ -n "$SUDO_USER" ] && sudo -u "$SUDO_USER" bash -c 'command -v yay' &>/dev/null; then
             sudo -u "$SUDO_USER" yay -S --needed --noconfirm linux-wifi-hotspot || true
         fi
     fi

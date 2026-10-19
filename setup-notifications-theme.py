@@ -2,7 +2,7 @@
 # =============================================================================
 #   Dunst Notification Theme Customizer (100% Transparent Glass Capsule)
 #   Part of: CachyOS + HyDE System Restorer
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 # =============================================================================
 
 import os
@@ -218,7 +218,11 @@ def fix_hyprland_layer_rules():
                 content = f.read()
             if "match:namespace notifications" not in content or "ignore_alpha 1" in content:
                 # remove old notification rules in userprefs if any
-                lines = [l for l in content.splitlines() if "match:namespace notifications" not in l]
+                lines = [
+                    l for l in content.splitlines()
+                    if "match:namespace notifications" not in l
+                    and l.strip() != "# Glassmorphism Transparency & Blur for Notifications"
+                ]
                 lines.append("# Glassmorphism Transparency & Blur for Notifications")
                 lines.append("layerrule = blur 1, match:namespace notifications")
                 lines.append("layerrule = ignore_alpha 0.05, match:namespace notifications")
@@ -245,7 +249,11 @@ def apply_dunst_theme(theme_name):
         subprocess.run(["notify-send", "-u", "normal", "💎 Transparent Glass Active", "Dark background removed! Glassmorphism active."])
         return True
     except Exception as e:
-        messagebox.showerror("Error", f"Failed to apply Dunst theme: {e}")
+        # --auto runs without a Tk window, so fall back to stderr
+        if tk._default_root is not None:
+            messagebox.showerror("Error", f"Failed to apply Dunst theme: {e}")
+        else:
+            print(f"Error: Failed to apply Dunst theme: {e}", file=sys.stderr)
         return False
 
 class DunstThemeApp(tk.Tk):

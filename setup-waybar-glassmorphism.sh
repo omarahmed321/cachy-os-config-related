@@ -2,7 +2,7 @@
 #===============================================================================
 #   Waybar Glassmorphism Permanent Master Setup Script (Pywal & HyDE Integrated)
 #   Part of: CachyOS + HyDE Custom Waybar Enhancements
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 #===============================================================================
 
 WAYBAR_DIR="$HOME/.config/waybar"

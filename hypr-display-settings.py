@@ -2,7 +2,7 @@
 # =============================================================================
 #   CachyOS Display & Mouse Settings Panel (Hyprland)
 #   Part of: CachyOS + HyDE Complete System Restorer
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 # =============================================================================
 
 import os

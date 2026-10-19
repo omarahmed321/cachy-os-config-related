@@ -2,7 +2,7 @@
 #===============================================================================
 #   Standalone SDDM Display & Screen Selector Tool (CLI & GUI)
 #   Part of: CachyOS + HyDE System Restorer
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 #===============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,7 +22,7 @@ EOF
 echo -e "${NC}"
 
 # If GUI environment is active, launch Python GUI panel
-if command -v python3 &>/dev/null && [ -f "$SCRIPT_DIR/sddm-screen-config.py" ] && [ -n "$WAYLAND_DISPLAY" -o -n "$DISPLAY" ]; then
+if command -v python3 &>/dev/null && [ -f "$SCRIPT_DIR/sddm-screen-config.py" ] && { [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; }; then
     echo -e "${GREEN}[+] Launching SDDM Screen Selector GUI...${NC}"
     python3 "$SCRIPT_DIR/sddm-screen-config.py" &
     exit 0
@@ -31,7 +31,7 @@ fi
 # Fallback: CLI Terminal Mode
 if command -v hyprctl &>/dev/null && hyprctl monitors &>/dev/null; then
     MONITORS_JSON=$(hyprctl monitors -j)
-    MONITOR_NAMES=($(echo "$MONITORS_JSON" | jq -r '.[].name'))
+    mapfile -t MONITOR_NAMES < <(echo "$MONITORS_JSON" | jq -r '.[].name')
     NUM_MONITORS=${#MONITOR_NAMES[@]}
     
     if [ "$NUM_MONITORS" -gt 0 ]; then
@@ -47,8 +47,11 @@ if command -v hyprctl &>/dev/null && hyprctl monitors &>/dev/null; then
         
         read -p "Select monitor for SDDM Login [1-$NUM_MONITORS] (Default: 1): " choice
         choice="${choice:-1}"
-        idx=$((choice - 1))
-        TARGET_SCREEN="${MONITOR_NAMES[idx]}"
+        if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$NUM_MONITORS" ]; then
+            echo -e "${YELLOW}[!] Invalid choice: $choice${NC}"
+            exit 1
+        fi
+        TARGET_SCREEN="${MONITOR_NAMES[choice - 1]}"
         
         if [ -n "$TARGET_SCREEN" ]; then
             python3 "$SCRIPT_DIR/sddm-screen-config.py" --set "$TARGET_SCREEN"

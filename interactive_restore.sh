@@ -2,7 +2,7 @@
 #===============================================================================
 #   Interactive Modular System Restorer & Installer (interactive_restore.sh)
 #   Part of: CachyOS + HyDE System Restorer
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 #
 #   Function:
 #     Modular, step-by-step interactive installer. Prompts the user before
@@ -68,11 +68,10 @@ DESC_MOD2="Deploys Hyprland compositor & HyDE desktop configurations:
 
 if prompt_module "2. Hyprland & HyDE Desktop Environment" "$DESC_MOD2"; then
     echo -e "${GREEN}[+] Deploying Hyprland & HyDE Environment...${NC}"
-    mkdir -p "$HOME/.config/hypr"
-    if [ -f "$SCRIPT_DIR/restore_my_setup.sh" ]; then
-        echo -e "${CYAN}[*] Sourcing Hyprland configurations...${NC}"
-    fi
-    echo -e "${GREEN}[OK] Hyprland & HyDE Environment configured.${NC}\n"
+    # The Hyprland/HyDE configs are generated inline by the full restorer, which ends with a
+    # reboot prompt, so it is not run from the middle of this wizard.
+    echo -e "${YELLOW}[!] Hyprland & HyDE configs are deployed by the full restorer.${NC}"
+    echo -e "${YELLOW}    Run it after this wizard finishes: bash \"$SCRIPT_DIR/restore_my_setup.sh\"${NC}\n"
 fi
 
 # --- MODULE 3: Waybar 3-Island Glassmorphism & Wallpaper ---
@@ -94,7 +93,7 @@ fi
 # --- MODULE 4: SDDM Astronaut Login Theme ---
 DESC_MOD4="Configures SDDM login manager theme & VT setup:
   • Theme: sddm-astronaut-theme
-  • Settings: VT1 reuse, automatic session detection (hyprland.desktop)
+  • Settings: VT1 reuse
   • Config File: /etc/sddm.conf.d/theme.conf"
 
 if prompt_module "4. SDDM Astronaut Login Theme" "$DESC_MOD4"; then
@@ -103,10 +102,6 @@ if prompt_module "4. SDDM Astronaut Login Theme" "$DESC_MOD4"; then
     cat << 'EOF' | sudo tee /etc/sddm.conf.d/theme.conf >/dev/null
 [Theme]
 Current=sddm-astronaut-theme
-
-[Session]
-AllwaysSetSession=true
-Session=hyprland.desktop
 
 [X11]
 MinimumVT=1

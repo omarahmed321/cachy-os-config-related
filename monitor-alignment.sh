@@ -2,7 +2,7 @@
 #===============================================================================
 #   Dual Monitor Cursor Alignment & Position Calibration Tool
 #   Part of: CachyOS + HyDE Complete System Restorer
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 #===============================================================================
 
 # Color definitions

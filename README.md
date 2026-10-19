@@ -13,23 +13,23 @@ To deploy your complete setup onto a fresh installation, you can run it either a
 ### Option 1: The Automated One-Liner (Recommended)
 Copy and paste this single command into your terminal to clone, enter, and execute the restorer automatically:
 ```bash
-git clone https://github.com/omarahmed321/cachyos-restore.git && cd cachyos-restore && chmod +x restore_my_setup.sh && ./restore_my_setup.sh
+git clone https://github.com/omarahmed321/cachy-os-config-related.git && cd cachy-os-config-related && chmod +x restore_my_setup.sh && ./restore_my_setup.sh
 ```
 
 ### Option 2: Run directly via `curl` (No manual cloning required)
 Since the restoration script is fully self-contained, you can execute it directly from the cloud without even cloning the repository manually:
 ```bash
-curl -sSL https://raw.githubusercontent.com/omarahmed321/cachyos-restore/main/restore_my_setup.sh | bash
+curl -sSL https://raw.githubusercontent.com/omarahmed321/cachy-os-config-related/main/restore_my_setup.sh | bash
 ```
 
 ### Option 3: Step-by-Step Execution
 If you prefer running each step individually:
 ```bash
 # 1. Clone the repository
-git clone https://github.com/omarahmed321/cachyos-restore.git
+git clone https://github.com/omarahmed321/cachy-os-config-related.git
 
 # 2. Enter the repository directory
-cd cachyos-restore
+cd cachy-os-config-related
 
 # 3. Make the script executable
 chmod +x restore_my_setup.sh
@@ -96,9 +96,9 @@ The `restore_my_setup.sh` script automates the entire installation and configura
 - **Interactive Mouse Offset Calibration**: Launches an interactive Zenity calibration loop at the end of the script, allowing the user to shift and align the monitors in real time.
 - **Custom Keyboard Layout**: Integrates a custom Arabic layout variant (`thal_bksl` on the standard `ara` layout) mapping the letter `ذ` to the backslash key, allowing quick `Alt+Shift` toggles between US and Arabic layouts.
 - **Antigravity Keyring & Token Persistence**: Configures Electron keyring flags (`--password-store=gnome-libsecret`) and unmasks `gnome-keyring-daemon` services to securely persist login tokens on reboot.
-- **Nvidia & Firefox Stability Fix**: Writes custom registry configuration tweaks (`PowerMizerDefaultAC=0x3`) to stop Firefox crash/stutter loops between P0 and P8 GPU states.
-- **SDDM Login Screen (Candy Theme)**: Installs the SDDM Candy theme, configures Qt5 graphical effects, centers login prompts, and dynamically syncs the background image with the active desktop wallpaper.
-- **Wi-Fi Hotspot Wrapper**: Installs `create_ap` and copies a helper script (`start_hotspot.sh`) to quickly spawn local hotspots, automatically disabling Wi-Fi power-save via `iw` for maximum stability.
+- **Nvidia & Firefox Stability Fix**: Writes `/etc/modprobe.d/nvidia.conf` with DRM modesetting and the registry tweak `PerfLevelSrc=0x2222` to stop Firefox crash/stutter loops between P0 and P8 GPU states.
+- **SDDM Login Screen (Astronaut Theme)**: Installs `sddm-astronaut-theme`, selects its Jake the Dog variant, and enables VT1 reuse (`MinimumVT=1`).
+- **Wi-Fi Hotspot Wrapper**: Copies a helper script (`start_hotspot.sh`) that starts a hotspot through NetworkManager (falling back to `create_ap`), shows a QR code, and disables Wi-Fi power-save via `iw` for maximum stability.
 - **Zsh & Fastfetch Customization**: Configures Oh My Zsh, Powerlevel10k, zsh autocomplete/syntax plugins, and displays a custom Braille anime mascot fastfetch logo.
 - **Automated Wi-Fi Driver Patching**: Detects `/usr/src/8188eu-*` driver source directories and automatically executes `patch_driver.py` to fix compilation issues on kernels 6.1+, followed by rebuilding/reinstalling via DKMS.
 - **HyDE Framework Setup**: Clones the official `hyprdots` (HyDE) framework, automated using pre-seeded inputs to skip standard installation prompt timers.
@@ -114,15 +114,14 @@ When you clone this repository, you will find the following files:
 
 | File | Description |
 | :--- | :--- |
-| **`restore_my_setup.sh`** | **The main installer & configuration script.** Handles core packages, kernel headers, SDDM Candy theme, HyDE config, monitor layout, VS Code sync, keyboard layout, and driver building. |
-| **`cachy_tools_menu.sh`** | **Unified Tools Control Panel Launcher.** Master bash script providing an interactive CLI or GUI (Rofi/Zenity) selection menu for all 15 system tools without breaking existing features. |
+| **`restore_my_setup.sh`** | **The main installer & configuration script.** Handles core packages, kernel headers, SDDM Astronaut theme, HyDE config, monitor layout, VS Code sync, keyboard layout, and driver building. |
+| **`cachy_tools_menu.sh`** | **Unified Tools Control Panel Launcher.** Master bash script providing an interactive CLI or GUI (Rofi/Zenity) selection menu for the repository's system tools. |
 | **`omar-fav-setup.sh`** | **Omar's Favorite Setup Controller.** One-click script that configures the 3-island Glassmorphism Waybar and sets `background-for-me.jpg` paper wallpaper with Pywal color generation. |
 | **`setup-wordpress-local.sh`** | **Local WordPress Development Installer.** Automated script that installs LocalWP (#1 local WordPress development tool) from AUR with automatic fallback options. |
 | **`fix-polkit-localwp.sh`** | **Polkit Authentication Agent Fixer.** Utility script that installs, starts, and configures the Polkit authentication agent required for LocalWP elevated privileges. |
 | **`sddm-screen-config.py`** | **SDDM Display & Screen Selector.** GUI/CLI tool to select which monitor the SDDM login screen appears on and view connected display properties. |
 | **`task-manager-gui.py`** | **Interactive Task Manager GUI Picker.** GTK/Tkinter visual task selector for `doing`, `donetask`, `rmtask`, and `edittask` without retyping text. |
 | **`setup-notifications-theme.py`** | **Notification Theme Customizer.** Dunst popup customizer offering Glassmorphism, Gruvbox, Cyberpunk, and Minimalist Pill themes. |
-| **`setup-zen-mode.sh`** | **Minimal Zen Mode Theme Toggle.** Standalone script that toggles distraction-free workspace (hides Waybar, zero gaps/borders). |
 | **`setup-initial-cursor-screen.py`** | **Boot Cursor Screen Selector.** Tool to select which display the mouse pointer defaults to when booting into Hyprland. |
 | **`background-for-me.jpg`** | **Signature Paper Wallpaper Asset.** High-resolution background image used by `omar-fav-setup.sh`. |
 | **`setup-waybar-glassmorphism.sh`** | **Glassmorphism 3-Islands Waybar Controller.** Standalone script that configures 3 floating glassmorphic capsules, rounded workspace numbers, laptop battery indicator, and click-to-manage Wi-Fi menu with Pywal integration. |
@@ -130,10 +129,19 @@ When you clone this repository, you will find the following files:
 | **`monitor-alignment.sh`** | **Dual Monitor Cursor Alignment Tool.** Zenity interactive wizard to calibrate screen rotation and vertical Y-offset alignment so mouse pointer transitions smoothly between dual displays. |
 | **`nightlight-gui.py`** | **Night Light settings GUI.** A GTK4/Adwaita panel for controlling display color warmth (2000–6500K) via `hyprsunset` with real-time auto-saving. Installed to `~/.local/share/bin/nightlight-gui.py`. Launch with `Super + Alt + N`. |
 | **`patch_driver.py`** | **Wi-Fi driver patcher.** Automatically modifies the RTL8188EUS (`8188eu`) wireless driver source files so it compiles on 6.x/7.x kernels. |
-| **`start_hotspot.sh`** | **Hotspot activation utility.** Spawns a Wi-Fi hotspot on the Realtek `wlan0` interface using `create_ap`. |
+| **`start_hotspot.sh`** | **Hotspot activation utility.** Auto-detects the Wi-Fi interface and spawns a hotspot via NetworkManager, with a `create_ap` fallback. |
 | **`double-pageup.sh`** | **Key-binding helper.** Captures double-taps of the `Page_Up` key and simulates `Ctrl + \`` to toggle the integrated terminal. |
 | **`ara-custom`** | **Custom keyboard layout reference.** Maps the Arabic letter `ذ` (Thal) to the backslash (`\`) key for natural Arabic typing. |
 | **`ioctl_cfg80211_patched.c`** | **Patched source reference.** Backup of the patched wireless driver configuration interfaces. |
+| **`install_my_setup.sh`** | **Lightweight restorer.** Copies dotfiles from a local `configs/` folder. That folder is git-ignored, so on a fresh clone use `restore_my_setup.sh` instead. |
+| **`interactive_restore.sh`** | **Interactive modular installer.** Asks before each module (packages, Waybar, SDDM, VS Code, LocalWP, GUIs, themes, task manager). |
+| **`setup-task-manager.sh`** | **Task manager installer.** Deploys `todo`, `doing`, `donetask`, `rmtask`, `edittask`, `manage_tasks.py` and the GUI, and adds shell functions to Fish/Zsh. |
+| **`manage_tasks.py`** | **Task manager backend.** Reads and writes `~/.config/fastfetch/tasks.txt` for the task commands. |
+| **`todo` / `doing` / `donetask` / `rmtask` / `edittask`** | **Task commands.** Add a task, or pick one with `fzf` and mark it in progress, done, remove it, or edit it. |
+| **`setup-sddm-screen.sh`** | **SDDM screen selector wrapper.** Opens `sddm-screen-config.py` in a graphical session, or asks in the terminal otherwise. |
+| **`setup-zen-browser-theme.sh`** | **Zen Browser glass theme.** Writes glass `userChrome.css` / `userContent.css` into your Zen profiles and enables custom stylesheets. `Profile/chrome/` and `(release)/chrome/` hold reference copies of the CSS. |
+| **`setup_clipboard.sh`** | **Clipboard history setup.** Installs `cliphist` (Wayland/Hyprland) or `greenclip` (X11/i3) and binds a clipboard history picker. |
+| **`setup_arabic_keyboard.sh`** | **Arabic keyboard customizer.** Adds the `thal_bksl` layout variant (ذ on backslash) to the system XKB files. |
 | **`README.md`** | **Documentation.** This file. |
 
 ---

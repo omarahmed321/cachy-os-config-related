@@ -2,7 +2,7 @@
 #===============================================================================
 #   Universal Polkit & LocalWP "Files Locked by Antivirus / Hosts" Fixer
 #   Part of: CachyOS + HyDE System Restorer & Universal Replicator
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 #===============================================================================
 
 GREEN='\033[0;32m'
@@ -58,15 +58,21 @@ fi
 
 # 2. Grant write permissions on /etc/hosts so LocalWP can append domains seamlessly
 echo -e "\n${CYAN}[2/4] Setting write permissions on /etc/hosts...${NC}"
-if [ -w "/etc/hosts" ]; then
+if [ -w "/etc/hosts" ] && [ -z "$(find /etc/hosts -perm -o+w 2>/dev/null)" ]; then
     echo -e "${GREEN}[OK] /etc/hosts is already writable.${NC}"
 else
-    if [ "$EUID" -ne 0 ]; then
-        sudo chattr -i /etc/hosts 2>/dev/null || true
-        sudo chmod 666 /etc/hosts 2>/dev/null || true
+    # Grant write access to this user only via an ACL; chmod 666 would let any
+    # process or user on the machine redirect domains through /etc/hosts.
+    HOSTS_USER="${SUDO_USER:-$USER}"
+    SUDO_CMD=""
+    [ "$EUID" -ne 0 ] && SUDO_CMD="sudo"
+    $SUDO_CMD chattr -i /etc/hosts 2>/dev/null || true
+    # Undo the world-writable mode older versions of this script applied
+    $SUDO_CMD chmod 644 /etc/hosts 2>/dev/null || true
+    if $SUDO_CMD setfacl -m "u:${HOSTS_USER}:rw" /etc/hosts 2>/dev/null; then
+        echo -e "${GREEN}[OK] Granted $HOSTS_USER write access to /etc/hosts.${NC}"
     else
-        chattr -i /etc/hosts 2>/dev/null || true
-        chmod 666 /etc/hosts 2>/dev/null || true
+        echo -e "${YELLOW}[!] Could not set an ACL on /etc/hosts (is the 'acl' package installed?).${NC}"
     fi
 fi
 

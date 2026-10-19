@@ -2,7 +2,7 @@
 # =============================================================================
 #   Hyprland Initial Boot Cursor Screen Selector
 #   Part of: CachyOS + HyDE System Restorer
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 # =============================================================================
 
 import os
@@ -36,9 +36,14 @@ def apply_initial_cursor_screen(screen_name):
         with open(USERPREFS_CONF, 'r') as f:
             content = f.read()
 
-        # Remove previous initial cursor screen entries
+        # Remove previous initial cursor screen entries only; keybinds that use
+        # focusmonitor (e.g. bind = ..., focusmonitor, ...) must be kept.
         lines = content.splitlines()
-        new_lines = [l for l in lines if "initial_cursor_screen" not in l and "focusmonitor" not in l]
+        new_lines = [
+            l for l in lines
+            if "initial_cursor_screen" not in l
+            and not (l.strip().startswith("exec-once") and "focusmonitor" in l)
+        ]
 
         # Append new exec-once entry
         entry = f"exec-once = hyprctl dispatch focusmonitor {screen_name} # initial_cursor_screen"
@@ -47,12 +52,22 @@ def apply_initial_cursor_screen(screen_name):
         with open(USERPREFS_CONF, 'w') as f:
             f.write('\n'.join(new_lines) + '\n')
 
-        # Apply live
-        subprocess.run(['hyprctl', 'dispatch', 'focusmonitor', screen_name], capture_output=True)
+        # Apply live; the config is already saved, so a missing Hyprland session is not an error
+        try:
+            subprocess.run(['hyprctl', 'dispatch', 'focusmonitor', screen_name], capture_output=True)
+        except FileNotFoundError:
+            pass
         return True
     except Exception as e:
-        messagebox.showerror("Error", f"Failed to save initial cursor screen: {e}")
+        show_error(f"Failed to save initial cursor screen: {e}")
         return False
+
+def show_error(message):
+    # --set runs from the installer without a Tk window, so fall back to stderr
+    if tk._default_root is not None:
+        messagebox.showerror("Error", message)
+    else:
+        print(f"Error: {message}", file=sys.stderr)
 
 class BootCursorApp(tk.Tk):
     def __init__(self):
@@ -107,7 +122,8 @@ if __name__ == "__main__":
         screen_name = sys.argv[2]
         if apply_initial_cursor_screen(screen_name):
             print(f"Initial boot cursor screen set to '{screen_name}' successfully.")
-        sys.exit(0)
+            sys.exit(0)
+        sys.exit(1)
 
     if not os.environ.get('WAYLAND_DISPLAY') and not os.environ.get('DISPLAY'):
         print("Error: Display environment not found.")

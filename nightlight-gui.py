@@ -2,19 +2,18 @@
 # =============================================================================
 #   Night Light GUI Panel (Hyprland / hyprsunset) — Auto-Save Mode
 #   Part of: CachyOS + HyDE System Restorer
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 # =============================================================================
 
 import gi
 import subprocess
 import os
 import re
-import sys
 import threading
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw, GLib, Gdk, Gio
+from gi.repository import Gtk, Adw, GLib, Gdk
 
 HYPRLAND_CONF = os.path.expanduser("~/.config/hypr/hyprland.conf")
 CONFIG_FILE   = os.path.expanduser("~/.config/hypr/nightlight.conf")

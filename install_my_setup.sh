@@ -82,6 +82,12 @@ opt_deploy_hyde="${opt_deploy_hyde:-y}"
 
 read -p "Copy customized dotfiles (Hyprland, Waybar, Zsh, Kitty, Cava, VS Code)? (y/n) [y]: " opt_deploy_dots
 opt_deploy_dots="${opt_deploy_dots:-y}"
+# The configs/ folder is git-ignored, so it only exists on a machine where it was exported locally
+if [[ "$opt_deploy_dots" =~ ^[Yy]$ ]] && [ ! -d "$SCRIPT_DIR/configs" ]; then
+    echo -e "${YELLOW}[!] $SCRIPT_DIR/configs not found (it is not part of the repository). Skipping dotfile copy.${NC}"
+    echo -e "${YELLOW}    Use restore_my_setup.sh instead: it generates every config inline.${NC}"
+    opt_deploy_dots="n"
+fi
 
 read -p "Install helper scripts (start_hotspot, double-pageup, display settings)? (y/n) [y]: " opt_helper_scripts
 opt_helper_scripts="${opt_helper_scripts:-y}"
@@ -215,7 +221,7 @@ if [[ "$opt_deploy_hyde" =~ ^[Yy]$ ]]; then
     fi
     export aurhlpr="$AUR_HELPER"
     export myShell="zsh"
-    cd "$HOME/hyde/Scripts" && echo -e "\n\n\nn" | ./install.sh && cd -
+    (cd "$HOME/hyde/Scripts" && echo -e "\n\n\nn" | ./install.sh)
 fi
 
 # --- Step 3: Copy Customized Dotfiles ---
@@ -496,7 +502,7 @@ if [[ "$opt_helper_scripts" =~ ^[Yy]$ ]]; then
     chmod +x "$HOME/start_hotspot.sh"
     
     # 3. Display Settings & Nightlight GUI
-    cp -f "$SCRIPT_DIR/display_nightlight_settings.py" "$HOME/.local/share/bin/hypr-display-settings.py"
+    cp -f "$SCRIPT_DIR/hypr-display-settings.py" "$HOME/.local/share/bin/hypr-display-settings.py"
     chmod +x "$HOME/.local/share/bin/hypr-display-settings.py"
     
     # Desktop shortcut for Display Settings

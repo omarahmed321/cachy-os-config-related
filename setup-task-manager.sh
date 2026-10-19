@@ -2,7 +2,7 @@
 #===============================================================================
 #   Standalone Task Manager Setup & Integrator (CLI & GUI)
 #   Part of: CachyOS + HyDE System Restorer
-#   Repo:    https://github.com/omarahmed321/cachyos-restore
+#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 #===============================================================================
 
 GREEN='\033[0;32m'
