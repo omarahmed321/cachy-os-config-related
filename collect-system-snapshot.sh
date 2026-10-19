@@ -26,7 +26,7 @@ OUT="${1:-$SCRIPT_DIR}/system-snapshot"
 MAX_FILE_KB=512
 
 rm -rf "$OUT"
-mkdir -p "$OUT/configs"
+mkdir -p "$OUT/dotfiles"
 
 run() {
     # run <output-file> <command...>: save output, never abort on failure
@@ -106,6 +106,9 @@ CONFIG_DIRS=(
     hypr waybar kitty dunst rofi wlogout swaylock fish fastfetch cava yazi
     gtk-3.0 gtk-4.0 Kvantum qt5ct qt6ct hyde nwg-look dolphinrc
     fontconfig environment.d xdg-desktop-portal starship.toml
+    noctalia uwsm wal xsettingsd swappy lsd alacritty btop micro MangoHud
+    kdeglobals mimeapps.list libinput-gestures.conf user-dirs.dirs
+    code-flags.conf chromium-flags.conf antigravity-ide-flags.conf
 )
 EXCLUDES=(
     --exclude='*token*' --exclude='*secret*' --exclude='*password*'
@@ -118,29 +121,44 @@ for item in "${CONFIG_DIRS[@]}"; do
     src="$HOME/.config/$item"
     [ -e "$src" ] || continue
     if have rsync; then
-        rsync -a --copy-links "${EXCLUDES[@]}" "$src" "$OUT/configs/" 2>/dev/null || true
+        rsync -a --copy-links "${EXCLUDES[@]}" "$src" "$OUT/dotfiles/" 2>/dev/null || true
     else
-        cp -rL "$src" "$OUT/configs/" 2>/dev/null || true
+        cp -rL "$src" "$OUT/dotfiles/" 2>/dev/null || true
     fi
 done
 for f in .zshrc .p10k.zsh .bashrc .profile .gitconfig .Xresources; do
-    [ -f "$HOME/$f" ] && cp "$HOME/$f" "$OUT/configs/home$f"
+    [ -f "$HOME/$f" ] && cp "$HOME/$f" "$OUT/dotfiles/home$f"
 done
-mkdir -p "$OUT/configs/vscode"
+mkdir -p "$OUT/dotfiles/vscode"
 for f in settings.json keybindings.json; do
-    [ -f "$HOME/.config/Code/User/$f" ] && cp "$HOME/.config/Code/User/$f" "$OUT/configs/vscode/"
+    [ -f "$HOME/.config/Code/User/$f" ] && cp "$HOME/.config/Code/User/$f" "$OUT/dotfiles/vscode/"
 done
 # Script names only: their contents may embed personal data
-run configs/local-share-bin-files.txt bash -c 'cd ~/.local/share/bin 2>/dev/null && sha256sum -- * 2>/dev/null'
+run dotfiles/local-share-bin-files.txt bash -c 'cd ~/.local/share/bin 2>/dev/null && sha256sum -- * 2>/dev/null'
+
+# Active look: HyDE state, current wallpaper and the theme folders in use
+mkdir -p "$OUT/theme"
+for d in "$HOME/.local/state/hyde" "$HOME/.config/hyde"; do
+    [ -d "$d" ] && find "$d" -maxdepth 1 -type f \( -name '*rc' -o -name '*.conf' -o -name '*.toml' \) -exec cp {} "$OUT/theme/" \; 2>/dev/null
+done
+run theme/wall-links.txt bash -c 'for l in ~/.cache/hyde/wall.set ~/.config/hyde/wall.set ~/.config/hyde/themes/*/wall.set; do [ -e "$l" ] && echo "$l -> $(readlink -f "$l")"; done'
+run theme/themes-dirs.txt bash -c 'ls -la ~/.themes ~/.icons ~/.local/share/themes ~/.local/share/icons 2>/dev/null'
+for l in "$HOME/.cache/hyde/wall.set" "$HOME/.config/hyde/wall.set"; do
+    if [ -e "$l" ]; then
+        real="$(readlink -f "$l")"
+        cp "$real" "$OUT/theme/current-wallpaper-${real##*/}" 2>/dev/null
+        break
+    fi
+done
 
 echo -e "${CYAN}[6/6] Redacting secrets...${NC}"
 # Mask values on lines that look like credentials (key = value / key: value / key=value)
-find "$OUT" -type f -print0 | xargs -0 -r sed -i -E \
+find "$OUT" -type f ! -name "*.jpg" ! -name "*.jpeg" ! -name "*.png" ! -name "*.gif" ! -name "*.webp" -print0 | xargs -0 -r sed -i -E \
     's/^([[:space:]]*"?[A-Za-z0-9_.-]*(password|passwd|passphrase|token|secret|api[_-]?key|psk|SAVED_PASS)[A-Za-z0-9_.-]*"?[[:space:]]*[=:][[:space:]]*).+/\1<redacted>/I' 2>/dev/null
 # .gitconfig: keep it but drop the e-mail address
-[ -f "$OUT/configs/home.gitconfig" ] && sed -i -E 's/(email[[:space:]]*=).*/\1 <redacted>/I' "$OUT/configs/home.gitconfig"
+[ -f "$OUT/dotfiles/home.gitconfig" ] && sed -i -E 's/(email[[:space:]]*=).*/\1 <redacted>/I' "$OUT/dotfiles/home.gitconfig"
 
 SIZE=$(du -sh "$OUT" | cut -f1)
 echo -e "\n${GREEN}[OK] Snapshot written to: $OUT ($SIZE)${NC}"
 echo -e "${YELLOW}Review it before sharing. To share it with Claude through the repo:${NC}"
-echo -e "  cd \"$SCRIPT_DIR\" && git checkout claude/bold-keller-ummi0r && git add system-snapshot && git commit -m 'Add system snapshot' && git push"
+echo -e "  cd \"$SCRIPT_DIR\" && git checkout claude/bold-keller-ummi0r && git add -f system-snapshot && git commit -m 'Add system snapshot' && git push"
