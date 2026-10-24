@@ -9,8 +9,11 @@ import os
 import sys
 import json
 import subprocess
-import tkinter as tk
-from tkinter import ttk, messagebox
+try:
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+except ImportError:  # 'tk' not installed: --auto still works
+    tk = ttk = messagebox = None
 
 DUNST_CONF = os.path.expanduser("~/.config/dunst/dunstrc")
 WAL_COLORS_JSON = os.path.expanduser("~/.cache/wal/colors.json")
@@ -250,13 +253,13 @@ def apply_dunst_theme(theme_name):
         return True
     except Exception as e:
         # --auto runs without a Tk window, so fall back to stderr
-        if tk._default_root is not None:
+        if tk is not None and tk._default_root is not None:
             messagebox.showerror("Error", f"Failed to apply Dunst theme: {e}")
         else:
             print(f"Error: Failed to apply Dunst theme: {e}", file=sys.stderr)
         return False
 
-class DunstThemeApp(tk.Tk):
+class DunstThemeApp(tk.Tk if tk is not None else object):
     def __init__(self):
         super().__init__()
         self.title("Waybar Glassmorphism Notification Theme")
@@ -306,6 +309,9 @@ if __name__ == "__main__":
         
     if not os.environ.get('WAYLAND_DISPLAY') and not os.environ.get('DISPLAY'):
         print("Error: Display environment not found.")
+        sys.exit(1)
+    if tk is None:
+        print("Error: tkinter is unavailable. Install it with: sudo pacman -S tk", file=sys.stderr)
         sys.exit(1)
     app = DunstThemeApp()
     app.mainloop()

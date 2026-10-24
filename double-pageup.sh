@@ -1,5 +1,8 @@
 #!/bin/bash
-LAST_FILE="/tmp/.pageup_last"
+# Page_Up is bound in Hyprland: a double press (within 0.5s) toggles the terminal
+# (Ctrl+`); a single press is forwarded to the focused window, so Page_Up still
+# scrolls everywhere. sendshortcut bypasses the bind, so this can't loop.
+LAST_FILE="${XDG_RUNTIME_DIR:-/tmp}/.pageup_last"
 NOW=$(date +%s%N)
 
 if [ -f "$LAST_FILE" ]; then
@@ -13,5 +16,9 @@ if [ -f "$LAST_FILE" ]; then
 fi
 
 echo "$NOW" > "$LAST_FILE"
-sleep 0.6
-[ -f "$LAST_FILE" ] && rm -f "$LAST_FILE"
+sleep 0.5
+# Still our timestamp: no second press came, so this was a plain Page_Up
+if [ -f "$LAST_FILE" ] && [ "$(cat "$LAST_FILE" 2>/dev/null)" = "$NOW" ]; then
+    rm -f "$LAST_FILE"
+    hyprctl dispatch sendshortcut ", Page_Up," >/dev/null 2>&1
+fi

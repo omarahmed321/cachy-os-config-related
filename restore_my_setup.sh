@@ -16,8 +16,39 @@ BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd)"
-if [ -z "$SCRIPT_DIR" ] || [ "$SCRIPT_DIR" = "/bin" ]; then
-    SCRIPT_DIR="$HOME/cachy-os-config-related"
+REPO_URL="https://github.com/omarahmed321/cachy-os-config-related.git"
+
+# The installer copies many files that live next to it (monitor engine, GUIs,
+# task scripts, Xsetup...). When it was piped in (`curl ... | bash`) or copied
+# out of the repo on its own, clone the repo and re-run from there. That also
+# gives `read` the terminal: under `curl | bash` stdin is the script itself.
+if [ ! -f "$SCRIPT_DIR/hypr-monitor-setup.py" ] || [ ! -t 0 ]; then
+    if [ -z "${CACHY_RESTORE_REEXEC:-}" ]; then
+        if ! ( : </dev/tty ) 2>/dev/null; then
+            echo "No terminal available for the installer's questions. Run instead:" >&2
+            echo "  git clone $REPO_URL && bash cachy-os-config-related/restore_my_setup.sh" >&2
+            exit 1
+        fi
+        CLONE_DIR="$HOME/cachy-os-config-related"
+        command -v git >/dev/null 2>&1 || sudo pacman -S --needed --noconfirm git </dev/tty || exit 1
+        if [ -d "$CLONE_DIR/.git" ]; then
+            git -C "$CLONE_DIR" pull --ff-only </dev/tty || true
+        else
+            git clone --depth 1 "$REPO_URL" "$CLONE_DIR" </dev/tty || exit 1
+        fi
+        CACHY_RESTORE_REEXEC=1 exec bash "$CLONE_DIR/restore_my_setup.sh" "$@" </dev/tty
+    fi
+fi
+
+# Detect the GPU up front: later sections (Nvidia modprobe, hypr env) need it
+# even when the package step is skipped
+GPU_VENDOR="unknown"
+if lspci 2>/dev/null | grep -Ei "vga|3d|display" | grep -iq nvidia; then
+    GPU_VENDOR="nvidia"
+elif lspci 2>/dev/null | grep -Ei "vga|3d|display" | grep -iq "amd\|ati"; then
+    GPU_VENDOR="amd"
+elif lspci 2>/dev/null | grep -Ei "vga|3d|display" | grep -iq intel; then
+    GPU_VENDOR="intel"
 fi
 
 # Header block
@@ -143,7 +174,8 @@ if [[ "$opt_install_pkgs" =~ ^[Yy]$ ]]; then
 # Synchronize package databases to prevent 404 download errors
 echo -e "\n${BLUE}${BOLD}[1.5/5] Synchronizing package databases...${NC}"
 fix_pacman_lock
-sudo pacman -Sy
+# Full upgrade: installing after a bare -Sy is an unsupported partial upgrade
+sudo pacman -Syu --noconfirm
 
 # Update Arch Linux and CachyOS keyrings first to prevent signature verification errors
 echo -e "${CYAN}Updating package keyrings to prevent signature errors...${NC}"
@@ -205,16 +237,7 @@ fi
 # 2. Check and Install Required Packages
 echo -e "\n${BLUE}${BOLD}[3/5] Checking and installing required packages...${NC}"
 # Detect GPU Vendor dynamically with interactive override option
-GPU_VENDOR="unknown"
-AUTO_GPU="unknown"
-gpu_info=$(lspci | grep -Ei "vga|3d")
-if echo "$gpu_info" | grep -iq "nvidia"; then
-    AUTO_GPU="nvidia"
-elif echo "$gpu_info" | grep -iq "amd"; then
-    AUTO_GPU="amd"
-elif echo "$gpu_info" | grep -iq "intel"; then
-    AUTO_GPU="intel"
-fi
+AUTO_GPU="$GPU_VENDOR"
 
 echo -e "\nAutomatically detected GPU Vendor: ${CYAN}${AUTO_GPU}${NC}"
 echo -e "Which graphics driver configuration would you like to use?"
@@ -239,26 +262,46 @@ fi
 echo -e "Using GPU driver configuration for: ${CYAN}${GPU_VENDOR}${NC}"
 
 REQUIRED_PACKAGES=(
-    hyprland waybar dunst rofi-wayland kitty firefox zen-browser-bin code dolphin yazi sddm-astronaut-theme
+    hyprland waybar dunst rofi kitty firefox zen-browser-bin code dolphin yazi sddm-astronaut-theme
     swaylock-effects-git wlogout cliphist hyprpicker hyprsunset hyprlock
     grimblast-git slurp jq polkit-kde-agent eza awesome-terminal-fonts
     ttf-meslo-nerd ttf-jetbrains-mono-nerd blueman bluez bluez-utils
     network-manager-applet brightnessctl pamixer playerctl udiskie
     nwg-look kvantum kvantum-qt5 qt5ct qt6ct qt5-wayland qt6-wayland qt6-5compat qt6-virtualkeyboard qt6-multimedia
     awww parallel pacman-contrib imagemagick ffmpegthumbs kde-cli-tools
-    bc 8188eu-dkms-git antigravity antigravity-ide antigravity-cli prismlauncher cava tk python-gobject libadwaita
+    bc antigravity antigravity-ide antigravity-cli prismlauncher cava tk python-gobject libadwaita
     wtype gnome-keyring ttf-cascadia-code-nerd python-pywal
     oh-my-zsh-git zsh-theme-powerlevel10k zsh-autosuggestions
     zsh-syntax-highlighting zsh-completions
     wl-clipboard qt5-graphicaleffects qt5-quickcontrols qt5-quickcontrols2
-    seahorse networkmanager zenity fastfetch bibata-cursor-theme-bin fzf cachyos-fish-config
+    seahorse networkmanager zenity fastfetch bibata-cursor-theme-bin fzf
     psmisc python dnsmasq hostapd iw sddm ananicy-cpp gammastep
+    pipewire pipewire-pulse pipewire-alsa wireplumber libpulse usbutils pciutils
+    xdg-desktop-portal-hyprland xdg-desktop-portal-gtk xdg-user-dirs
 )
+
+# CachyOS-only packages: skipped on plain Arch, where they do not exist
+pacman -Si cachyos-fish-config &>/dev/null && REQUIRED_PACKAGES+=(cachyos-fish-config)
+
+# TP-Link TL-WN722N v2/v3 (RTL8188EUS) USB Wi-Fi: out-of-tree driver only when it is plugged in
+if lsusb 2>/dev/null | grep -qiE "2357:010c|0bda:8179|0bda:0179"; then
+    HAS_RTL8188EUS=true
+    REQUIRED_PACKAGES+=(8188eu-dkms)
+else
+    HAS_RTL8188EUS=false
+fi
 
 # Dynamically add GPU drivers based on detected hardware
 if [ "$GPU_VENDOR" = "nvidia" ]; then
-    echo -e "${CYAN}Adding Nvidia proprietary drivers and Wayland support packages...${NC}"
-    REQUIRED_PACKAGES+=(nvidia-dkms nvidia-utils lib32-nvidia-utils egl-wayland libva-nvidia-driver)
+    echo -e "${CYAN}Adding Nvidia open kernel modules and Wayland support packages...${NC}"
+    # CachyOS ships prebuilt modules per kernel (linux-cachyos-nvidia-open, ...);
+    # elsewhere use DKMS. nvidia-dkms no longer exists. GTX 10xx and older need a legacy driver.
+    NV_MODULES=()
+    for kernel in $(pacman -Qq 2>/dev/null | grep -E '^linux-cachyos(-[a-z]+)?$'); do
+        pacman -Si "${kernel}-nvidia-open" &>/dev/null && NV_MODULES+=("${kernel}-nvidia-open")
+    done
+    [ ${#NV_MODULES[@]} -eq 0 ] && NV_MODULES=(nvidia-open-dkms)
+    REQUIRED_PACKAGES+=("${NV_MODULES[@]}" nvidia-utils lib32-nvidia-utils egl-wayland libva-nvidia-driver)
 elif [ "$GPU_VENDOR" = "amd" ]; then
     echo -e "${CYAN}Adding AMD open-source graphics and Vulkan driver packages...${NC}"
     REQUIRED_PACKAGES+=(mesa lib32-mesa vulkan-radeon lib32-vulkan-radeon libva-mesa-driver lib32-libva-mesa-driver)
@@ -271,7 +314,7 @@ fi
 echo -e "${CYAN}Checking ${#REQUIRED_PACKAGES[@]} essential packages...${NC}"
 TO_INSTALL=()
 for pkg in "${REQUIRED_PACKAGES[@]}"; do
-    if [ "$pkg" = "8188eu-dkms-git" ]; then
+    if [ "$pkg" = "8188eu-dkms" ]; then
         if pacman -Qq | grep -qE '^8188eu-' &>/dev/null; then
             INSTALLED_8188EU_PKG=$(pacman -Qq | grep -E '^8188eu-' | head -n 1)
             echo -e "  - ${GREEN}[Installed]${NC} 8188eu-dkms (provided by $INSTALLED_8188EU_PKG)"
@@ -316,9 +359,15 @@ fi
 
 # Enable system services
 echo -e "\n${BLUE}${BOLD}[4/5] Enabling and starting system services (bluetooth, NetworkManager, sddm, ananicy-cpp)...${NC}"
-for svc in bluetooth NetworkManager sddm ananicy-cpp; do
+for svc in bluetooth NetworkManager ananicy-cpp; do
     verify_and_start_service "$svc"
 done
+# Enable only: starting a display manager now would take over the current tty
+# (or clash with another running DM). It starts on the next boot.
+for dm in gdm lightdm lxdm ly greetd; do
+    systemctl is-enabled "$dm" &>/dev/null && sudo systemctl disable "$dm" 2>/dev/null
+done
+sudo systemctl enable sddm && echo -e "  - ${GREEN}[Enabled]${NC} sddm (starts on next boot)"
 fi
 
 
@@ -356,7 +405,13 @@ cd "$HOME/hyde/Scripts" || exit
 # Enter/Skip Grub theme, Enter/Skip SDDM theme, and Answer 'n' to Flatpak apps
 export aurhlpr="$AUR_HELPER"
 export myShell="zsh"
+ORIG_LOGIN_SHELL="$(getent passwd "$USER" | cut -d: -f7)"
 echo -e "\n\n\nn" | ./install.sh
+# HyDE switches the login shell to the first of zsh/fish it finds installed;
+# keep fish for users who had it (CachyOS default)
+if [[ "$ORIG_LOGIN_SHELL" == */fish ]] && [ "$(getent passwd "$USER" | cut -d: -f7)" != "$ORIG_LOGIN_SHELL" ]; then
+    chsh -s "$ORIG_LOGIN_SHELL" </dev/tty || true
+fi
 
 echo -e "${GREEN}[OK] HyDE base configuration installed successfully!${NC}"
 
@@ -414,227 +469,12 @@ if [[ "$opt_helper_scripts" =~ ^[Yy]$ ]]; then
 # --- WRITE ~/.local/bin/double-pageup.sh ---
 echo -e "${CYAN}Writing ~/.local/bin/double-pageup.sh...${NC}"
 mkdir -p "$HOME/.local/bin"
-cat << 'DPEOF' > "$HOME/.local/bin/double-pageup.sh"
-#!/bin/bash
-LAST_FILE="/tmp/.pageup_last"
-NOW=$(date +%s%N)
-
-if [ -f "$LAST_FILE" ]; then
-    LAST=$(cat "$LAST_FILE")
-    DIFF=$(( (NOW - LAST) / 1000000 ))
-    if [ "$DIFF" -lt 500 ]; then
-        rm -f "$LAST_FILE"
-        wtype -M ctrl -k grave
-        exit 0
-    fi
-fi
-
-echo "$NOW" > "$LAST_FILE"
-sleep 0.6
-[ -f "$LAST_FILE" ] && rm -f "$LAST_FILE"
-DPEOF
+install -D -m 755 "$SCRIPT_DIR/double-pageup.sh" "$HOME/.local/bin/double-pageup.sh"
 chmod +x "$HOME/.local/bin/double-pageup.sh"
 
 # --- WRITE ~/start_hotspot.sh ---
 echo -e "${CYAN}Writing ~/start_hotspot.sh...${NC}"
-cat << 'HOTEOF' > "$HOME/start_hotspot.sh"
-#!/usr/bin/env bash
-#===============================================================================
-#   Universal Native Wi-Fi Hotspot Controller
-#   Uses native NetworkManager (nmcli) for absolute stability & zero dependencies
-#   Fallback to create_ap / linux-wifi-hotspot if NetworkManager is inactive
-#===============================================================================
-
-# --- Color Definitions ---
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-MAGENTA='\033[0;35m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-NC='\033[0m' # No Color
-
-# --- Root Check & Auto-Sudo ---
-if [ "$EUID" -ne 0 ]; then
-    echo -e "${YELLOW}[!] This script needs root privileges. Rerunning with sudo...${NC}"
-    exec sudo "$0" "$@"
-fi
-
-# --- Dynamic Interface Detection (Self-Healing / Device Independent) ---
-echo -e "${CYAN}[*] Auto-detecting network interfaces...${NC}"
-
-# Detect Wi-Fi interface
-WIFI_INT=$(iw dev 2>/dev/null | awk '$1=="Interface"{print $2}' | head -n 1)
-if [ -z "$WIFI_INT" ]; then
-    # Fallback 1: ip link pattern
-    WIFI_INT=$(ip -o link show | awk -F': ' '$2 ~ /^w/ {print $2}' | head -n 1)
-fi
-
-# Detect active internet interface (used for fallback routing)
-INTERNET_INT=$(ip route 2>/dev/null | grep default | awk '{print $5}' | head -n 1)
-if [ -z "$INTERNET_INT" ]; then
-    # Fallback to first ethernet interface if no default route
-    INTERNET_INT=$(ip -o link show | awk -F': ' '$2 ~ /^e/ {print $2}' | head -n 1)
-fi
-
-if [ -z "$WIFI_INT" ]; then
-    echo -e "${RED}[ERROR] No Wi-Fi interface detected on this machine!${NC}"
-    echo -e "${YELLOW}Available interfaces on this system:${NC}"
-    ip -o link show | awk -F': ' '{print " - " $2}'
-    exit 1
-fi
-
-echo -e "Detected Wi-Fi:      ${GREEN}${WIFI_INT}${NC}"
-echo -e "Detected Internet:    ${GREEN}${INTERNET_INT:-None}${NC}"
-
-# --- Load / Save Configuration ---
-if [ -n "$SUDO_USER" ]; then
-    USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
-else
-    USER_HOME="$HOME"
-fi
-CONFIG_DIR="${USER_HOME}/.config"
-CONFIG_FILE="${CONFIG_DIR}/hotspot_config"
-
-DEFAULT_SSID="tplink-7825"
-DEFAULT_PASS="bolbol123*#"
-
-if [ -f "$CONFIG_FILE" ]; then
-    source "$CONFIG_FILE" 2>/dev/null
-fi
-
-SSID="${SAVED_SSID:-$DEFAULT_SSID}"
-PASSPHRASE="${SAVED_PASS:-$DEFAULT_PASS}"
-
-# --- Setup Dialog ---
-echo -e "\n${CYAN}${BOLD}====================================================${NC}"
-echo -e "${MAGENTA}${BOLD}         Native Wi-Fi Hotspot Controller            ${NC}"
-echo -e "${CYAN}${BOLD}====================================================${NC}"
-echo -e "Saved Default: SSID: ${YELLOW}${SSID}${NC} | Password: ${YELLOW}${PASSPHRASE}${NC}"
-echo -e "1) Start with default settings"
-echo -e "2) Configure new SSID and Password"
-read -p "Choose option [1-2] (Default 1): " choice
-choice="${choice:-1}"
-
-if [ "$choice" = "2" ]; then
-    read -p "Enter new SSID (Press Enter for default '$SSID'): " new_ssid
-    SSID="${new_ssid:-$SSID}"
-    while true; do
-        read -p "Enter new Password (min 8 chars, Press Enter for default): " new_pass
-        new_pass="${new_pass:-$PASSPHRASE}"
-        if [ ${#new_pass} -lt 8 ]; then
-            echo -e "${RED}[!] Password must be at least 8 characters long.${NC}"
-        else
-            PASSPHRASE="$new_pass"
-            break
-        fi
-    done
-
-    read -p "Save this configuration as default? (y/n) [y]: " save_choice
-    save_choice="${save_choice:-y}"
-    if [[ "$save_choice" =~ ^[Yy]$ ]]; then
-        mkdir -p "$CONFIG_DIR"
-        printf 'SAVED_SSID=%q\nSAVED_PASS=%q\n' "$SSID" "$PASSPHRASE" > "$CONFIG_FILE"
-        if [ -n "$SUDO_USER" ]; then
-            chown "$SUDO_USER:" "$CONFIG_DIR" "$CONFIG_FILE" 2>/dev/null || true
-        fi
-        echo -e "${GREEN}[+] Configuration saved!${NC}"
-        sleep 1
-    fi
-fi
-
-# --- Display QR Code ---
-clear
-echo -e "${CYAN}${BOLD}====================================================${NC}"
-echo -e "${MAGENTA}${BOLD}             Hotspot Active Connection              ${NC}"
-echo -e "${CYAN}${BOLD}====================================================${NC}"
-echo -e "SSID:       ${GREEN}${SSID}${NC}"
-echo -e "Password:   ${GREEN}${PASSPHRASE}${NC}"
-echo -e "Interface:  ${GREEN}${WIFI_INT}${NC}"
-echo -e "${CYAN}----------------------------------------------------${NC}"
-
-if command -v qrencode &>/dev/null; then
-    echo -e "${GREEN}[+] Scan this QR Code to connect instantly:${NC}"
-    qrencode -t utf8 "WIFI:S:${SSID};T:WPA;P:${PASSPHRASE};;"
-    echo -e "${CYAN}----------------------------------------------------${NC}"
-else
-    # Automatically install qrencode if missing
-    if command -v pacman &>/dev/null; then
-        echo -e "${YELLOW}[*] Installing qrencode for QR code display...${NC}"
-        pacman -S --needed --noconfirm qrencode &>/dev/null && {
-            echo -e "${GREEN}[+] Scan this QR Code to connect instantly:${NC}"
-            qrencode -t utf8 "WIFI:S:${SSID};T:WPA;P:${PASSPHRASE};;"
-            echo -e "${CYAN}----------------------------------------------------${NC}"
-        }
-    fi
-fi
-
-# --- Cleanup Trap ---
-cleanup() {
-    echo -e "\n${YELLOW}[*] Shutting down hotspot and restoring interface...${NC}"
-    if systemctl is-active NetworkManager &>/dev/null; then
-        nmcli connection down Hotspot 2>/dev/null || true
-        nmcli connection delete Hotspot 2>/dev/null || true
-        nmcli device disconnect "$WIFI_INT" 2>/dev/null || true
-    else
-        killall -9 hostapd dnsmasq create_ap haveged 2>/dev/null || true
-    fi
-    # Re-enable Wi-Fi Power Saving for power efficiency
-    iw dev "$WIFI_INT" set power_save on 2>/dev/null || true
-    echo -e "${GREEN}[+] Hotspot stopped successfully.${NC}"
-    exit 0
-}
-trap cleanup SIGINT SIGTERM SIGHUP EXIT
-
-# --- Optimize Wi-Fi Driver for Maximum Range / Power ---
-echo -e "${CYAN}[*] Disabling Wi-Fi Power Saving and setting txpower to MAX...${NC}"
-iw dev "$WIFI_INT" set power_save off 2>/dev/null || true
-iw dev "$WIFI_INT" set txpower limit 3000 2>/dev/null || true
-# Set country code to Egypt (EG) for maximum signal power allowance
-iw reg set EG 2>/dev/null || true
-
-# --- Launch Hotspot ---
-if systemctl is-active NetworkManager &>/dev/null; then
-    echo -e "${GREEN}[+] Launching Native NetworkManager Hotspot...${NC}"
-    # Delete old hotspot connection profile if exists to prevent profile pollution
-    nmcli connection delete Hotspot &>/dev/null || true
-    # Start hotspot using native NetworkManager command
-    if nmcli device wifi hotspot ifname "$WIFI_INT" ssid "$SSID" password "$PASSPHRASE"; then
-        echo -e "\n${GREEN}[OK] Hotspot is running natively via NetworkManager!${NC}"
-        echo -e "${YELLOW}[*] Press Ctrl+C to stop it and exit...${NC}"
-        # Keep process running to listen for traps/cancellation
-        while true; do
-            sleep 2
-        done
-    else
-        echo -e "${RED}[!] Native NetworkManager hotspot failed. Falling back to create_ap...${NC}"
-    fi
-fi
-
-# --- Fallback to create_ap / linux-wifi-hotspot ---
-if ! command -v create_ap &>/dev/null; then
-    echo -e "${YELLOW}[*] 'create_ap' helper is missing. Attempting auto-installation...${NC}"
-    if command -v pacman &>/dev/null; then
-        # Try to install dependency chain
-        pacman -S --needed --noconfirm dnsmasq hostapd iw psmisc haveged iptables || true
-        if [ -n "$SUDO_USER" ] && sudo -u "$SUDO_USER" bash -c 'command -v yay' &>/dev/null; then
-            sudo -u "$SUDO_USER" yay -S --needed --noconfirm linux-wifi-hotspot || true
-        fi
-    fi
-fi
-
-if command -v create_ap &>/dev/null; then
-    echo -e "${GREEN}[+] Launching fallback create_ap hotspot...${NC}"
-    # Terminate conflicting hostapd/dnsmasq instances
-    killall -9 hostapd dnsmasq create_ap haveged 2>/dev/null || true
-    create_ap --no-virt --ieee80211n "$WIFI_INT" "$INTERNET_INT" "$SSID" "$PASSPHRASE"
-else
-    echo -e "${RED}[ERROR] Neither NetworkManager Hotspot nor create_ap fallback could be executed.${NC}"
-    echo -e "${YELLOW}[*] Please make sure NetworkManager or linux-wifi-hotspot is installed.${NC}"
-    exit 1
-fi
-HOTEOF
+install -D -m 755 "$SCRIPT_DIR/start_hotspot.sh" "$HOME/start_hotspot.sh"
 chmod +x "$HOME/start_hotspot.sh"
 fi
 
@@ -674,596 +514,7 @@ if [[ "$opt_helper_scripts" =~ ^[Yy]$ ]]; then
 # --- Write ~/.local/share/bin/hypr-display-settings.py ---
 echo -e "${CYAN}Writing ~/.local/share/bin/hypr-display-settings.py...${NC}"
 mkdir -p "$HOME/.local/share/bin"
-cat << 'DYEOF' > "$HOME/.local/share/bin/hypr-display-settings.py"
-#!/usr/bin/env python3
-import os
-import re
-import sys
-import subprocess
-import tkinter as tk
-from tkinter import ttk, messagebox
-
-# --- CONFIG PATHS ---
-MONITORS_CONF = os.path.expanduser('~/.config/hypr/monitors.conf')
-USERPREFS_CONF = os.path.expanduser('~/.config/hypr/userprefs.conf')
-
-# --- HELPERS ---
-def get_monitor_info():
-    try:
-        output = subprocess.check_output(['hyprctl', 'monitors'], text=True)
-    except Exception as e:
-        messagebox.showerror("Error", f"Failed to run 'hyprctl monitors': {e}")
-        sys.exit(1)
-
-    monitors = {}
-    chunks = output.split('Monitor ')[1:]
-    for chunk in chunks:
-        lines = chunk.strip().split('\n')
-        if not lines:
-            continue
-        
-        match_name = re.match(r'^(\S+)\s+\(ID', lines[0])
-        if not match_name:
-            continue
-        name = match_name.group(1)
-        
-        info = {
-            'name': name,
-            'model': 'Unknown',
-            'current_mode': '',
-            'position': '0x0',
-            'scale': '1.00',
-            'available_modes': {},
-            'extra': ''
-        }
-        
-        if len(lines) > 1:
-            match_mode = re.search(r'(\d+x\d+@\d+\.\d+)\s+at\s+(\d+x\d+)', lines[1])
-            if match_mode:
-                info['current_mode'] = match_mode.group(1)
-                info['position'] = match_mode.group(2)
-        
-        for line in lines:
-            line_str = line.strip()
-            if line_str.startswith('model:'):
-                info['model'] = line_str.split('model:')[1].strip()
-            elif line_str.startswith('scale:'):
-                info['scale'] = line_str.split('scale:')[1].strip()
-            elif line_str.startswith('availableModes:'):
-                modes_str = line_str.split('availableModes:')[1].strip()
-                modes_list = modes_str.split()
-                
-                # Group modes by resolution
-                grouped = {}
-                for mode in modes_list:
-                    m = re.match(r'^(\d+x\d+)@([\d\.]+(?:Hz)?)$', mode)
-                    if m:
-                        res = m.group(1)
-                        hz = m.group(2).replace('Hz', '')
-                        try:
-                            hz_float = float(hz)
-                            hz_str = str(int(hz_float)) if hz_float.is_integer() else f"{hz_float:.2f}"
-                        except ValueError:
-                            hz_str = hz
-                        
-                        if res not in grouped:
-                            grouped[res] = []
-                        if hz_str not in grouped[res]:
-                            grouped[res].append(hz_str)
-                
-                # Sort resolutions and refresh rates descending
-                sorted_res = sorted(grouped.keys(), key=lambda r: [int(x) for x in r.split('x')], reverse=True)
-                sorted_grouped = {}
-                for r in sorted_res:
-                    sorted_grouped[r] = sorted(grouped[r], key=float, reverse=True)
-                
-                info['available_modes'] = sorted_grouped
-                
-        monitors[name] = info
-    
-    # Parse existing monitors.conf to preserve extra options (like transform, mirror, etc.)
-    if os.path.exists(MONITORS_CONF):
-        try:
-            with open(MONITORS_CONF, 'r') as f:
-                content = f.read()
-            for name in monitors:
-                match_line = re.search(r'^\s*monitor\s*=\s*' + re.escape(name) + r'\s*,\s*[^,\n]+\s*,\s*[^,\n]+\s*,\s*[^,\n]+(.*)$', content, re.MULTILINE)
-                if match_line:
-                    monitors[name]['extra'] = match_line.group(1).strip()
-        except Exception:
-            pass
-
-    return monitors
-
-def get_mouse_sensitivity():
-    if not os.path.exists(USERPREFS_CONF):
-        return 0.0
-    try:
-        with open(USERPREFS_CONF, 'r') as f:
-            content = f.read()
-        match = re.search(r'^\s*sensitivity\s*=\s*([-\d\.]+)', content, re.MULTILINE)
-        if match:
-            return float(match.group(1))
-    except Exception:
-        pass
-    return 0.0
-
-def set_mouse_sensitivity(value):
-    try:
-        os.makedirs(os.path.dirname(USERPREFS_CONF), exist_ok=True)
-        if not os.path.exists(USERPREFS_CONF):
-            with open(USERPREFS_CONF, 'w') as f:
-                f.write("# User Preferences\ninput {\n    sensitivity = 0.00\n}\n")
-        
-        with open(USERPREFS_CONF, 'r') as f:
-            content = f.read()
-        
-        pattern = r'^(\s*sensitivity\s*=\s*)[-\d\.]+'
-        if re.search(pattern, content, re.MULTILINE):
-            new_content = re.sub(pattern, rf'\g<1>{value:.2f}', content, flags=re.MULTILINE)
-        else:
-            match = re.search(r'input\s*\{', content)
-            if match:
-                start_idx = match.end()
-                brace_count = 1
-                end_idx = -1
-                for i in range(start_idx, len(content)):
-                    if content[i] == '{':
-                        brace_count += 1
-                    elif content[i] == '}':
-                        brace_count -= 1
-                        if brace_count == 0:
-                            end_idx = i
-                            break
-                if end_idx != -1:
-                    before = content[:end_idx]
-                    after = content[end_idx:]
-                    if before and not before.endswith('\n'):
-                        before += '\n'
-                    new_content = before + f"    sensitivity = {value:.2f}\n" + after
-                else:
-                    new_content = content + f"\ninput {{\n    sensitivity = {value:.2f}\n}}\n"
-            else:
-                new_content = content + f"\ninput {{\n    sensitivity = {value:.2f}\n}}\n"
-                
-        with open(USERPREFS_CONF, 'w') as f:
-            f.write(new_content)
-        return True
-    except Exception:
-        return False
-
-def get_touchpad_natural_scroll():
-    if not os.path.exists(USERPREFS_CONF):
-        return True
-    try:
-        with open(USERPREFS_CONF, 'r') as f:
-            content = f.read()
-        match = re.search(r'natural_scroll\s*=\s*(true|false)', content)
-        if match:
-            return match.group(1) == 'true'
-    except Exception:
-        pass
-    return True
-
-def set_touchpad_natural_scroll(enabled):
-    try:
-        os.makedirs(os.path.dirname(USERPREFS_CONF), exist_ok=True)
-        if not os.path.exists(USERPREFS_CONF):
-            with open(USERPREFS_CONF, 'w') as f:
-                f.write("# User Preferences\n")
-        
-        with open(USERPREFS_CONF, 'r') as f:
-            content = f.read()
-        
-        touchpad_pattern = r'(touchpad\s*\{[^}]*natural_scroll\s*=\s*)(true|false)'
-        if re.search(touchpad_pattern, content):
-            new_content = re.sub(touchpad_pattern, rf'\g<1>{"true" if enabled else "false"}', content)
-        else:
-            touchpad_block_pattern = r'touchpad\s*\{'
-            match_tp = re.search(touchpad_block_pattern, content)
-            if match_tp:
-                start_idx = match_tp.end()
-                brace_count = 1
-                end_idx = -1
-                for i in range(start_idx, len(content)):
-                    if content[i] == '{':
-                        brace_count += 1
-                    elif content[i] == '}':
-                        brace_count -= 1
-                        if brace_count == 0:
-                            end_idx = i
-                            break
-                if end_idx != -1:
-                    before = content[:end_idx]
-                    after = content[end_idx:]
-                    if before and not before.endswith('\n'):
-                        before += '\n'
-                    new_content = before + f"        natural_scroll = {'true' if enabled else 'false'}\n" + after
-                else:
-                    new_content = content + f"\ninput {{\n    touchpad {{\n        natural_scroll = {'true' if enabled else 'false'}\n    }}\n}}\n"
-            else:
-                match_in = re.search(r'input\s*\{', content)
-                if match_in:
-                    start_idx = match_in.end()
-                    brace_count = 1
-                    end_idx = -1
-                    for i in range(start_idx, len(content)):
-                        if content[i] == '{':
-                            brace_count += 1
-                        elif content[i] == '}':
-                            brace_count -= 1
-                            if brace_count == 0:
-                                end_idx = i
-                                break
-                    if end_idx != -1:
-                        before = content[:end_idx]
-                        after = content[end_idx:]
-                        if before and not before.endswith('\n'):
-                            before += '\n'
-                        tp_block = f"    touchpad {{\n        natural_scroll = {'true' if enabled else 'false'}\n    }}\n"
-                        new_content = before + tp_block + after
-                    else:
-                        new_content = content + f"\ninput {{\n    touchpad {{\n        natural_scroll = {'true' if enabled else 'false'}\n    }}\n}}\n"
-                else:
-                    new_content = content + f"\ninput {{\n    touchpad {{\n        natural_scroll = {'true' if enabled else 'false'}\n    }}\n}}\n"
-                
-        with open(USERPREFS_CONF, 'w') as f:
-            f.write(new_content)
-        return True
-    except Exception:
-        return False
-
-def update_monitor_config(name, resolution, hz, scale, pos, transform_val=0):
-    try:
-        os.makedirs(os.path.dirname(MONITORS_CONF), exist_ok=True)
-        if not os.path.exists(MONITORS_CONF):
-            with open(MONITORS_CONF, 'w') as f:
-                f.write("# Monitor Rules\n")
-                
-        with open(MONITORS_CONF, 'r') as f:
-            lines = f.readlines()
-        
-        position = pos if pos and pos != 'auto' else '0x0'
-        res_hz = f"{resolution}@{hz}"
-        extra_str = f",transform,{transform_val}" if transform_val > 0 else ""
-        new_line = f"monitor = {name},{res_hz},{position},{scale}{extra_str}\n"
-        
-        updated = False
-        for i, line in enumerate(lines):
-            match = re.match(r'^\s*monitor\s*=\s*([\w\-]+)\s*,', line)
-            if match and match.group(1) == name:
-                lines[i] = new_line
-                updated = True
-                break
-                
-        if not updated:
-            insert_idx = len(lines)
-            for idx, line in enumerate(lines):
-                if 'Workspace Rules' in line:
-                    insert_idx = idx
-                    break
-            lines.insert(insert_idx, new_line)
-            
-        with open(MONITORS_CONF, 'w') as f:
-            f.writelines(lines)
-        return True
-    except Exception:
-        return False
-
-# --- GUI APP ---
-class DisplaySettingsApp(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        
-        self.title("CachyOS Display & Mouse Settings")
-        self.geometry("450x450")
-        self.configure(bg='#272727')
-        
-        # Load data
-        self.monitors = get_monitor_info()
-        self.current_sens = get_mouse_sensitivity()
-        
-        # Style
-        self.setup_styles()
-        
-        # Build UI
-        self.build_ui()
-        
-    def setup_styles(self):
-        style = ttk.Style()
-        style.theme_use('clam')
-        
-        style.configure('.', background='#272727', foreground='#ebdbb2', font=('JetBrains Mono', 10))
-        style.configure('TLabel', background='#272727', foreground='#ebdbb2')
-        style.configure('TFrame', background='#272727')
-        
-        style.configure('TNotebook', background='#272727', borderwidth=0)
-        style.configure('TNotebook.Tab', background='#3c3836', foreground='#a89984', padding=[12, 6])
-        style.map('TNotebook.Tab', background=[('selected', '#272727')], foreground=[('selected', '#ebdbb2')])
-        
-        style.configure('TCombobox', fieldbackground='#3c3836', background='#504945', foreground='#ebdbb2')
-        style.map('TCombobox', fieldbackground=[('readonly', '#3c3836')], foreground=[('readonly', '#ebdbb2')])
-        
-        style.configure('TButton', background='#3c3836', foreground='#ebdbb2', borderwidth=1, focuscolor='none', padding=[10, 5])
-        style.map('TButton', background=[('active', '#504945')])
-
-    def build_ui(self):
-        # Notebook for Tabs
-        notebook = ttk.Notebook(self)
-        notebook.pack(fill='both', expand=True, padx=15, pady=15)
-        
-        # --- TAB 1: DISPLAY ---
-        display_frame = ttk.Frame(notebook)
-        notebook.add(display_frame, text="Display Settings")
-        
-        # Monitor Select
-        ttk.Label(display_frame, text="Monitor:").grid(row=0, column=0, sticky='w', pady=10, padx=10)
-        self.monitor_names = list(self.monitors.keys())
-        self.monitor_display_names = [f"{name} ({self.monitors[name]['model']})" for name in self.monitor_names]
-        
-        self.monitor_combo = ttk.Combobox(display_frame, values=self.monitor_display_names, state="readonly", width=30)
-        self.monitor_combo.grid(row=0, column=1, sticky='w', pady=10, padx=10)
-        self.monitor_combo.bind("<<ComboboxSelected>>", self.on_monitor_select)
-        
-        # Resolution Select
-        ttk.Label(display_frame, text="Resolution:").grid(row=1, column=0, sticky='w', pady=10, padx=10)
-        self.res_combo = ttk.Combobox(display_frame, state="readonly", width=20)
-        self.res_combo.grid(row=1, column=1, sticky='w', pady=10, padx=10)
-        self.res_combo.bind("<<ComboboxSelected>>", self.on_res_select)
-        
-        # Refresh Rate Input (Direct Custom Text Entry + Detected Presets Dropdown)
-        ttk.Label(display_frame, text="Refresh Rate (Hz):").grid(row=2, column=0, sticky='w', pady=10, padx=10)
-        hz_input_frame = ttk.Frame(display_frame)
-        hz_input_frame.grid(row=2, column=1, sticky='w', pady=10, padx=10)
-
-        self.hz_entry = ttk.Entry(hz_input_frame, width=10, font=('JetBrains Mono', 10))
-        self.hz_entry.pack(side='left', padx=(0, 10))
-        self.hz_entry.insert(0, "60")
-
-        self.hz_preset_combo = ttk.Combobox(hz_input_frame, state="readonly", width=14)
-        self.hz_preset_combo.pack(side='left', padx=2)
-        self.hz_preset_combo.bind("<<ComboboxSelected>>", self.on_hz_preset_select)
-
-        # Scaling Select (Direct Custom Text Entry + Preset Selector)
-        ttk.Label(display_frame, text="System Zoom (Scale):").grid(row=3, column=0, sticky='w', pady=10, padx=10)
-        scale_input_frame = ttk.Frame(display_frame)
-        scale_input_frame.grid(row=3, column=1, sticky='w', pady=10, padx=10)
-
-        self.scale_entry = ttk.Entry(scale_input_frame, width=10, font=('JetBrains Mono', 10))
-        self.scale_entry.pack(side='left', padx=(0, 10))
-        self.scale_entry.insert(0, "1")
-
-        self.scale_preset_combo = ttk.Combobox(
-            scale_input_frame,
-            values=["1 (100%)", "1.25 (125%)", "1.5 (150%)", "1.67 (167%)", "1.75 (175%)", "2 (200%)"],
-            state="readonly", width=14
-        )
-        self.scale_preset_combo.pack(side='left', padx=2)
-        self.scale_preset_combo.bind("<<ComboboxSelected>>", self.on_scale_preset_select)
-
-        # Orientation Select
-        ttk.Label(display_frame, text="Orientation:").grid(row=4, column=0, sticky='w', pady=10, padx=10)
-        self.rot_values = ["Landscape (Normal)", "Portrait (90°)", "Flipped Landscape (180°)", "Flipped Portrait (270°)"]
-        self.rot_combo = ttk.Combobox(display_frame, values=self.rot_values, state="readonly", width=25)
-        self.rot_combo.grid(row=4, column=1, sticky='w', pady=10, padx=10)
-        
-        # --- TAB 2: MOUSE ---
-        mouse_frame = ttk.Frame(notebook)
-        notebook.add(mouse_frame, text="Mouse Sensitivity")
-        
-        ttk.Label(mouse_frame, text="Adjust Pointer Sensitivity:", font=('JetBrains Mono', 11, 'bold')).pack(anchor='w', pady=15, padx=15)
-        ttk.Label(mouse_frame, text="Slide left to slow down, right to speed up (-1.00 to +1.00):").pack(anchor='w', pady=5, padx=15)
-        
-        # Sens Slider Frame
-        slider_frame = ttk.Frame(mouse_frame)
-        slider_frame.pack(fill='x', padx=15, pady=20)
-        
-        self.sens_val_var = tk.StringVar(value=f"{self.current_sens:.2f}")
-        
-        self.sens_slider = tk.Scale(
-            slider_frame, from_=-1.0, to=1.0, resolution=0.05, orient='horizontal',
-            bg='#3c3836', fg='#ebdbb2', troughcolor='#272727', highlightbackground='#272727',
-            activebackground='#504945', showvalue=False, command=self.on_slider_move
-        )
-        self.sens_slider.set(self.current_sens)
-        self.sens_slider.pack(side='left', fill='x', expand=True, padx=5)
-        
-        sens_label = ttk.Label(slider_frame, textvariable=self.sens_val_var, font=('JetBrains Mono', 12, 'bold'), width=6, anchor='center')
-        sens_label.pack(side='right', padx=10)
-        
-        # Accel Note
-        ttk.Label(mouse_frame, text="* Accel profile is forced to 'flat' to ensure raw mouse precision.", foreground='#a89984').pack(anchor='w', padx=15, pady=10)
-
-        # Touchpad Settings Separator
-        ttk.Separator(mouse_frame, orient='horizontal').pack(fill='x', padx=15, pady=15)
-        
-        ttk.Label(mouse_frame, text="Touchpad Settings:", font=('JetBrains Mono', 11, 'bold')).pack(anchor='w', padx=15, pady=5)
-        
-        self.touchpad_var = tk.BooleanVar(value=not get_touchpad_natural_scroll())
-        self.touchpad_check = ttk.Checkbutton(
-            mouse_frame, text="Windows-style Touchpad Scrolling (Reverse/Standard)",
-            variable=self.touchpad_var
-        )
-        self.touchpad_check.pack(anchor='w', padx=20, pady=10)
-
-        # --- BOTTOM ACTION PANEL ---
-        btn_frame = ttk.Frame(self)
-        btn_frame.pack(fill='x', side='bottom', padx=15, pady=15)
-        
-        cancel_btn = ttk.Button(btn_frame, text="Close", command=self.destroy)
-        cancel_btn.pack(side='left', padx=5)
-        
-        apply_btn = ttk.Button(btn_frame, text="Apply & Save Settings", command=self.apply_settings)
-        apply_btn.pack(side='right', padx=5)
-        
-        # Set defaults if monitors exist
-        if self.monitor_names:
-            self.monitor_combo.current(0)
-            self.on_monitor_select(None)
-
-    def on_hz_preset_select(self, event):
-        selected = self.hz_preset_combo.get().replace('Hz', '').strip()
-        self.hz_entry.delete(0, tk.END)
-        self.hz_entry.insert(0, selected)
-
-    def on_scale_preset_select(self, event):
-        selected = self.scale_preset_combo.get().split()[0]
-        self.scale_entry.delete(0, tk.END)
-        self.scale_entry.insert(0, selected)
-
-    def on_monitor_select(self, event):
-        m_idx = self.monitor_combo.current()
-        m_name = self.monitor_names[m_idx]
-        m_info = self.monitors[m_name]
-        
-        # Update resolutions
-        resolutions = list(m_info['available_modes'].keys())
-        self.res_combo.configure(values=resolutions)
-        
-        # Pre-select current or highest resolution
-        current_res = m_info['current_mode'].split('@')[0]
-        if current_res in resolutions:
-            self.res_combo.set(current_res)
-        elif resolutions:
-            self.res_combo.current(0)
-            
-        self.on_res_select(None)
-        
-        # Pre-select current scale into Entry
-        curr_scale = m_info['scale']
-        self.scale_entry.delete(0, tk.END)
-        self.scale_entry.insert(0, curr_scale)
-
-        # Pre-select current transform/rotation
-        extra = m_info['extra']
-        match_trans = re.search(r'transform\s*,\s*([0-7])', extra)
-        if match_trans:
-            trans_val = int(match_trans.group(1))
-            if trans_val < len(self.rot_values):
-                self.rot_combo.current(trans_val)
-            else:
-                self.rot_combo.current(0)
-        else:
-            self.rot_combo.current(0)
-
-    def on_res_select(self, event):
-        m_idx = self.monitor_combo.current()
-        m_name = self.monitor_names[m_idx]
-        m_info = self.monitors[m_name]
-        
-        selected_res = self.res_combo.get()
-        if selected_res in m_info['available_modes']:
-            refresh_rates = m_info['available_modes'][selected_res]
-            self.hz_preset_combo.configure(values=[f"{r} Hz" for r in refresh_rates])
-            
-            # Match current refresh rate
-            current_hz = m_info['current_mode'].split('@')[1] if '@' in m_info['current_mode'] else ''
-            try:
-                curr_hz_val = float(current_hz)
-                curr_hz_str = str(int(curr_hz_val)) if curr_hz_val.is_integer() else f"{curr_hz_val:.2f}"
-            except ValueError:
-                curr_hz_str = current_hz
-            
-            self.hz_entry.delete(0, tk.END)
-            self.hz_entry.insert(0, curr_hz_str if curr_hz_str else "60")
-            
-            if refresh_rates:
-                self.hz_preset_combo.current(0)
-
-    def on_slider_move(self, value):
-        self.sens_val_var.set(f"{float(value):+.2f}")
-
-    def apply_settings(self):
-        m_idx = self.monitor_combo.current()
-        if m_idx < 0:
-            messagebox.showerror("Error", "No monitor selected.")
-            return
-            
-        m_name = self.monitor_names[m_idx]
-        m_info = self.monitors[m_name]
-        
-        selected_res = self.res_combo.get()
-        selected_hz = self.hz_entry.get().strip()
-        
-        selected_scale = self.scale_entry.get().strip()
-        try:
-            scale_val = float(selected_scale)
-            if scale_val <= 0:
-                raise ValueError
-        except ValueError:
-            messagebox.showerror("Error", "Please enter a valid positive number for scaling (e.g., 1, 1.25, 1.5, 1.67).")
-            return
-            
-        try:
-            hz_val = float(selected_hz)
-            if hz_val <= 0:
-                raise ValueError
-            selected_hz = str(int(hz_val)) if hz_val.is_integer() else f"{hz_val:.2f}"
-        except ValueError:
-            messagebox.showerror("Error", "Please enter a valid positive number for refresh rate (e.g., 60, 120, 144, 165, 240).")
-            return
-        
-        if not selected_res or not selected_hz or not selected_scale:
-            messagebox.showerror("Error", "Please make sure resolution, refresh rate, and scaling are set.")
-            return
-            
-        # 1. Update Monitor Configuration
-        extra = m_info['extra']
-        extra_clean = re.sub(r',?\s*transform\s*,\s*\d', '', extra).strip()
-        
-        selected_rotation = self.rot_combo.current()
-        if selected_rotation > 0:
-            if extra_clean and not extra_clean.startswith(','):
-                extra_clean = ',' + extra_clean
-            extra_clean = f",transform,{selected_rotation}" + extra_clean
-            
-        if extra_clean and not extra_clean.startswith(','):
-            extra_clean = ',' + extra_clean
-            
-        position = m_info['position']
-        res_hz = f"{selected_res}@{selected_hz}"
-        try:
-            subprocess.run(['hyprctl', 'keyword', 'monitor', f"{m_name},{res_hz},{position},{selected_scale}{extra_clean}"], check=True)
-            update_monitor_config(m_name, selected_res, selected_hz, selected_scale, extra_clean)
-            # Ensure settings are fully applied on legacy/modern Hyprland sessions by triggering a reload
-            subprocess.run(['hyprctl', 'reload'], capture_output=True)
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to apply display settings: {e}")
-            return
-            
-        # 2. Update Mouse Sensitivity
-        sens_value = self.sens_slider.get()
-        try:
-            subprocess.run(['hyprctl', 'keyword', 'input:sensitivity', f"{sens_value:.2f}"], check=True)
-            set_mouse_sensitivity(sens_value)
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to apply mouse sensitivity: {e}")
-            return
-
-        # 3. Update Touchpad Scrolling Direction
-        touchpad_windows_style = self.touchpad_var.get()
-        natural_scroll = not touchpad_windows_style
-        try:
-            subprocess.run(['hyprctl', 'keyword', 'input:touchpad:natural_scroll', 'true' if natural_scroll else 'false'], check=True)
-            set_touchpad_natural_scroll(natural_scroll)
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to apply touchpad settings: {e}")
-            return
-            
-        messagebox.showinfo("Success", "Settings applied and saved successfully!")
-        
-        self.monitors = get_monitor_info()
-        self.current_sens = get_mouse_sensitivity()
-        self.touchpad_var.set(not get_touchpad_natural_scroll())
-
-if __name__ == "__main__":
-    if not os.environ.get('WAYLAND_DISPLAY'):
-        print("Error: Wayland display not found. This tool is designed for Hyprland.")
-        sys.exit(1)
-    
-    app = DisplaySettingsApp()
-    app.mainloop()
-DYEOF
+install -D -m 755 "$SCRIPT_DIR/hypr-display-settings.py" "$HOME/.local/share/bin/hypr-display-settings.py"
 chmod +x "$HOME/.local/share/bin/hypr-display-settings.py"
 
 # --- Create Display & Mouse Settings Desktop Entry ---
@@ -1284,642 +535,7 @@ chmod +x "$HOME/.local/share/applications/hypr-display-settings.desktop"
 # --- Write ~/.local/share/bin/nightlight-gui.py ---
 echo -e "${CYAN}Writing ~/.local/share/bin/nightlight-gui.py...${NC}"
 mkdir -p "$HOME/.local/share/bin"
-cat << 'NLEOF' > "$HOME/.local/share/bin/nightlight-gui.py"
-#!/usr/bin/env python3
-# =============================================================================
-#   Night Light GUI for Hyprland (hyprsunset)
-#   Part of: CachyOS + HyDE Complete System Restorer
-#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
-#
-#   Two modes:
-#     python3 nightlight-gui.py           → normal settings panel
-#     python3 nightlight-gui.py --setup   → first-run wizard (used by
-#                                           restore_my_setup.sh mid-install)
-#
-#   Installed to: ~/.local/share/bin/nightlight-gui.py
-#   Launched via: Super + Alt + N  (Hyprland keybind)
-#   Config saved: ~/.config/hypr/nightlight.conf
-# =============================================================================
-
-import gi
-import subprocess
-import os
-import re
-import sys
-import threading
-
-gi.require_version("Gtk", "4.0")
-gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw, GLib, Gdk, Gio
-
-HYPRLAND_CONF = os.path.expanduser("~/.config/hypr/hyprland.conf")
-CONFIG_FILE   = os.path.expanduser("~/.config/hypr/nightlight.conf")
-
-SETUP_MODE = "--setup" in sys.argv   # True when called from restore_my_setup.sh
-
-TEMP_MIN     = 1000
-TEMP_MAX     = 6500
-TEMP_DEFAULT = 3500
-GAMMA_MIN    = 10
-GAMMA_MAX    = 100
-
-CSS = """
-/* ── Window / Card ──────────────────────────────────────────────────── */
-window.nightlight-window { background-color: transparent; }
-
-.nightlight-card {
-    background: alpha(@window_bg_color, 0.95);
-    border-radius: 24px;
-    border: 1px solid alpha(@window_fg_color, 0.08);
-    padding: 28px 24px 24px 24px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
-}
-
-/* ── Setup-mode banner ──────────────────────────────────────────────── */
-.setup-banner {
-    background: linear-gradient(135deg, alpha(#ff9240, 0.12), alpha(#ff5722, 0.05));
-    border-radius: 14px;
-    border: 1px solid alpha(#ff9240, 0.25);
-    padding: 14px 18px;
-    margin-bottom: 20px;
-}
-.setup-banner-title {
-    font-size: 13px;
-    font-weight: 800;
-    color: #ff9240;
-    letter-spacing: 0.3px;
-}
-.setup-banner-body {
-    font-size: 11px;
-    opacity: 0.7;
-    margin-top: 4px;
-    line-height: 1.4;
-}
-
-/* ── Typography ─────────────────────────────────────────────────────── */
-.header-icon    { font-size: 44px; margin-right: 4px; }
-.title-label    { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
-.subtitle-label { font-size: 12px; opacity: 0.6; margin-top: -2px; }
-.section-label  { font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
-                  color: @accent_color; opacity: 0.85; margin-top: 18px; margin-bottom: 8px; }
-.value-badge    { font-size: 30px; font-weight: 900;
-                  font-variant-numeric: tabular-nums; }
-.unit-label     { font-size: 14px; opacity: 0.6; font-weight: 600;
-                  margin-bottom: 4px; }
-.desc-label     { font-size: 11px; opacity: 0.7; font-style: italic; }
-
-/* ── Temperature colours ────────────────────────────────────────────── */
-.temp-warm { color: #ff7043; }
-.temp-mid  { color: #ffca28; }
-.temp-cool { color: #29b6f6; }
-
-/* ── Sliders ────────────────────────────────────────────────────────── */
-scale {
-    padding: 10px 0;
-}
-
-scale trough {
-    border-radius: 8px;
-    min-height: 14px;
-    border: 1px solid alpha(@window_fg_color, 0.05);
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.temp-scale trough { 
-    background: linear-gradient(to right, #ff3d00, #ff9100, #ffea00, #ffffff, #80d8ff, #29b6f6); 
-}
-
-.gamma-scale trough { 
-    background: linear-gradient(to right, #1a1a1a, #555555, #aaaaaa, #ffffff); 
-}
-
-scale highlight {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-}
-
-scale slider {
-    background-color: #ffffff;
-    border: 3px solid @accent_color;
-    border-radius: 50%;
-    min-width: 20px;
-    min-height: 20px;
-    margin-top: -4px;
-    margin-bottom: -4px;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
-    transition: background-color 0.15s, border-color 0.15s, transform 0.1s;
-}
-
-scale slider:hover {
-    background-color: #f5f5f5;
-    border-color: @accent_bg_color;
-    transform: scale(1.15);
-}
-
-scale slider:focus {
-    border-color: @accent_bg_color;
-}
-
-scale slider:active {
-    background-color: @accent_color;
-    border-color: #ffffff;
-    transform: scale(1.25);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-/* ── Preset grid buttons ────────────────────────────────────────────── */
-.preset-btn {
-    background-color: alpha(@window_fg_color, 0.04);
-    border: 1px solid alpha(@window_fg_color, 0.08);
-    border-radius: 12px;
-    padding: 12px 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: @window_fg_color;
-    transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
-}
-
-.preset-btn:hover {
-    background-color: alpha(@window_fg_color, 0.08);
-    border-color: alpha(@window_fg_color, 0.15);
-    transform: translateY(-1px);
-}
-
-.preset-btn:active {
-    background-color: alpha(@window_fg_color, 0.12);
-    transform: translateY(1px);
-}
-
-.preset-btn.active-preset {
-    background: linear-gradient(135deg, alpha(@accent_color, 0.25), alpha(@accent_color, 0.15));
-    border: 2px solid @accent_color;
-    color: @accent_color;
-    font-weight: 800;
-    box-shadow: 0 4px 12px alpha(@accent_color, 0.18);
-}
-
-/* ── Action buttons ─────────────────────────────────────────────────── */
-.suggested-action {
-    background: linear-gradient(135deg, @accent_bg_color, alpha(@accent_bg_color, 0.85));
-    border-radius: 14px;
-    padding: 14px 20px;
-    font-size: 14px;
-    font-weight: 800;
-    color: @accent_fg_color;
-    border: none;
-    box-shadow: 0 4px 15px alpha(@accent_bg_color, 0.35);
-    transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
-}
-
-.suggested-action:hover {
-    background: @accent_bg_color;
-    box-shadow: 0 6px 20px alpha(@accent_bg_color, 0.45);
-    transform: translateY(-1px);
-}
-
-.suggested-action:active {
-    transform: translateY(1px);
-    box-shadow: 0 2px 8px alpha(@accent_bg_color, 0.25);
-}
-
-.skip-btn {
-    background-color: alpha(@window_fg_color, 0.04);
-    border: 1px solid alpha(@window_fg_color, 0.08);
-    border-radius: 14px;
-    padding: 14px 20px;
-    font-size: 13px;
-    font-weight: 700;
-    color: alpha(@window_fg_color, 0.8);
-    transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
-}
-
-.skip-btn:hover {
-    background-color: alpha(@window_fg_color, 0.08);
-    border-color: alpha(@window_fg_color, 0.15);
-    transform: translateY(-1px);
-}
-
-.skip-btn:active {
-    transform: translateY(1px);
-}
-
-.status-label {
-    font-size: 12px;
-    font-weight: 700;
-    color: #4caf50;
-}
-"""
-
-PRESETS = [
-    # (label,           temp,  gamma, description)
-    ("🌙  Night Mode",  2700,  100,   "Warm amber — perfect for late night"),
-    ("🌆  Evening",     3200,  100,   "Soft warm tone for the evening"),
-    ("🏠  Home Comfort",4000,  100,   "Balanced warm-neutral light"),
-    ("☀️  Daytime",     5500,  100,   "Natural daylight color"),
-    ("❄️  Cool Blue",   6500,  100,   "Crisp cool tone for focus"),
-    ("🔅  Dim Night",   2700,   70,   "Dimmed warm — great for sleeping"),
-]
-
-
-# ── Config I/O ────────────────────────────────────────────────────────────────
-
-def _read_conf():
-    """Return (temp, gamma, enabled) from saved config or hyprland.conf."""
-    if os.path.exists(CONFIG_FILE):
-        try:
-            txt = open(CONFIG_FILE).read()
-            t = int(re.search(r"temperature=(\d+)", txt).group(1)) \
-                if re.search(r"temperature=(\d+)", txt) else TEMP_DEFAULT
-            g = int(re.search(r"gamma=(\d+)",       txt).group(1)) \
-                if re.search(r"gamma=(\d+)",       txt) else GAMMA_MAX
-            e = re.search(r"enabled=(\w+)", txt).group(1) == "true" \
-                if re.search(r"enabled=(\w+)", txt) else True
-            return t, g, e
-        except Exception:
-            pass
-    try:
-        txt = open(HYPRLAND_CONF).read()
-        m = re.search(r"hyprsunset\s+-t\s+(\d+)", txt)
-        return (int(m.group(1)) if m else TEMP_DEFAULT), GAMMA_MAX, True
-    except Exception:
-        return TEMP_DEFAULT, GAMMA_MAX, True
-
-
-def _save_conf(t, g, e):
-    """Write settings to nightlight.conf."""
-    os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
-    with open(CONFIG_FILE, "w") as f:
-        f.write(f"temperature={t}\ngamma={g}\n"
-                f"enabled={'true' if e else 'false'}\n")
-
-
-def _patch_hyprland(t, e):
-    """Disable patching hyprland.conf as we use nightlight-start.sh"""
-    pass
-
-
-def _apply_live(t, g, e):
-    """Kill existing hyprsunset and restart with new settings."""
-    subprocess.run(["pkill", "-x", "hyprsunset"], capture_output=True)
-    if e:
-        subprocess.Popen(
-            ["hyprsunset", "-t", str(t), "-g", str(g)],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
-
-
-# ── Application ───────────────────────────────────────────────────────────────
-
-class NightLightApp(Adw.Application):
-    def __init__(self):
-        super().__init__(
-            application_id="com.hyde.nightlight",
-            flags=Gio.ApplicationFlags.FLAGS_NONE,
-        )
-        self.connect("activate", self._on_activate)
-
-    def _on_activate(self, app):
-        win = NightLightWindow(application=app)
-        win.present()
-
-
-class NightLightWindow(Adw.ApplicationWindow):
-    def __init__(self, **kw):
-        super().__init__(**kw)
-        self.set_title("Night Light — Setup" if SETUP_MODE else "Night Light")
-        self.set_default_size(450, -1)
-        self.set_resizable(False)
-        self.add_css_class("nightlight-window")
-
-        self._t, self._g, self._en = _read_conf()
-        self._timer        = None
-        self._preset_btns  = []   # kept to highlight active preset
-        self._active_preset_idx = None
-
-        # Load CSS
-        p = Gtk.CssProvider()
-        p.load_from_string(CSS)
-        Gtk.StyleContext.add_provider_for_display(
-            Gdk.Display.get_default(), p,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
-        )
-        self._build()
-
-    # ── UI ────────────────────────────────────────────────────────────────────
-
-    def _build(self):
-        # We put outer box directly in content instead of a ScrolledWindow to prevent scrollbars and clipping
-        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        outer.set_margin_top(22);  outer.set_margin_bottom(22)
-        outer.set_margin_start(22); outer.set_margin_end(22)
-        self.set_content(outer)
-
-        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        card.add_css_class("nightlight-card")
-        outer.append(card)
-
-        # ── Setup-mode banner ────────────────────────────────────────────────
-        if SETUP_MODE:
-            banner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-            banner.add_css_class("setup-banner")
-            card.append(banner)
-
-            btitle = Gtk.Label(label="⚙️  Installation Step: Night Light Setup")
-            btitle.set_halign(Gtk.Align.START)
-            btitle.add_css_class("setup-banner-title")
-            banner.append(btitle)
-
-            bbody = Gtk.Label(
-         cat << 'NLEOF' > "$HOME/.local/share/bin/nightlight-gui.py"
-#!/usr/bin/env python3
-# =============================================================================
-#   Night Light & Brightness GUI Panel (Hyprland / hyprsunset)
-#   Part of: CachyOS + HyDE System Restorer
-#   Repo:    https://github.com/omarahmed321/cachy-os-config-related
-# =============================================================================
-
-import gi
-import subprocess
-import os
-import re
-import sys
-import threading
-
-gi.require_version("Gtk", "4.0")
-gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw, GLib, Gdk, Gio
-
-HYPRLAND_CONF = os.path.expanduser("~/.config/hypr/hyprland.conf")
-CONFIG_FILE   = os.path.expanduser("~/.config/hypr/nightlight.conf")
-
-# --- Temperature / Percentage Mapping ---
-# 0% Night Light Warmth   = 6500K (Daylight / Off)
-# 100% Night Light Warmth = 2000K (Max Warm Amber)
-def pct_to_temp(pct):
-    pct = max(0, min(100, pct))
-    return int(6500 - (pct / 100.0) * 4500)
-
-def temp_to_pct(temp):
-    temp = max(2000, min(6500, temp))
-    return int(round(((6500 - temp) / 4500.0) * 100))
-
-def get_warmth_desc(pct):
-    if pct <= 0:
-        return "⚪ Off · Normal Daylight (6500K)"
-    elif pct <= 35:
-        return f"🟡 Soft Warmth ({pct_to_temp(pct)}K)"
-    elif pct <= 70:
-        return f"🟠 Balanced Night Warmth ({pct_to_temp(pct)}K)"
-    else:
-        return f"🔴 Deep Amber Night Mode ({pct_to_temp(pct)}K)"
-
-# --- Backend Config Functions ---
-def _load_conf():
-    t, en = 3500, True
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "r") as f:
-                c = f.read()
-            m_t = re.search(r"^\s*(?:ENABLE_NIGHTLIGHT|temperature)=(\d+)", c, re.M)
-            m_e = re.search(r"^\s*(?:HYPRSUNSET_ENABLED|enabled)=(true|false)", c, re.M)
-            if m_t: t = int(m_t.group(1))
-            if m_e: en = (m_e.group(1) == "true")
-        except Exception:
-            pass
-    return t, en
-
-def _save_conf(t, en):
-    os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
-    en_str = "true" if en else "false"
-    with open(CONFIG_FILE, "w") as f:
-        f.write(f"""# Night Light Configuration — managed by nightlight-gui.py
-temperature={t}
-enabled={en_str}
-ENABLE_NIGHTLIGHT={t}
-HYPRSUNSET_ENABLED={en_str}
-""")
-
-def _apply_live(t, en):
-    # Kill any existing hyprsunset daemon instances
-    subprocess.run(["pkill", "-9", "-x", "hyprsunset"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    
-    if not en or t >= 6400:
-        return
-
-    try:
-        # Spawn hyprsunset as a persistent background daemon
-        subprocess.Popen(
-            ["hyprsunset", "-t", str(t)],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True
-        )
-    except Exception as e:
-        print(f"[!] Failed to run hyprsunset: {e}")
-
-def _patch_hyprland(t, en):
-    if not os.path.exists(HYPRLAND_CONF):
-        return
-    try:
-        with open(HYPRLAND_CONF, "r") as f:
-            lines = f.readlines()
-        exec_line = "exec-once = bash ~/.local/share/bin/nightlight-start.sh\n"
-        has_exec = any("nightlight-start.sh" in l for l in lines)
-        if not has_exec:
-            lines.append("\n# Auto-start Night Light\n" + exec_line)
-            with open(HYPRLAND_CONF, "w") as f:
-                f.writelines(lines)
-    except Exception:
-        pass
-
-# --- Clean & Modern UI Window ---
-CSS = """
-window { background-color: transparent; }
-
-.main-card {
-    background: alpha(@window_bg_color, 0.95);
-    border-radius: 20px;
-    border: 1px solid alpha(@window_fg_color, 0.1);
-    padding: 24px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-}
-
-.title-label {
-    font-size: 17px;
-    font-weight: 800;
-}
-
-.slider-label {
-    font-size: 13px;
-    font-weight: 700;
-    margin-top: 10px;
-}
-
-.val-badge {
-    font-size: 16px;
-    font-weight: 800;
-    color: @accent_color;
-}
-
-.desc-label {
-    font-size: 11px;
-    opacity: 0.75;
-    margin-top: 2px;
-}
-
-.status-label {
-    font-size: 12px;
-    font-weight: 700;
-    color: #2ecc71;
-}
-
-scale trough {
-    border-radius: 8px;
-    min-height: 12px;
-}
-"""
-
-class NightLightApp(Adw.Application):
-    def __init__(self):
-        super().__init__(application_id="org.cachyos.nightlight")
-        self.connect("activate", self.on_activate)
-
-    def on_activate(self, app):
-        p = Gtk.CssProvider()
-        p.load_from_data(CSS.encode())
-        Gtk.StyleContext.add_provider_for_display(
-            Gdk.Display.get_default(), p, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        )
-
-        win = Adw.ApplicationWindow(application=app, title="Night Light Control")
-        win.set_default_size(380, 240)
-
-        t, en = _load_conf()
-        self._t = t
-        self._en = en
-        self._timer = None
-
-        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        card.add_css_class("main-card")
-
-        # Header Row with Switch Toggle
-        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        title = Gtk.Label(label="🌙 Night Light Control")
-        title.add_css_class("title-label")
-        title.set_hexpand(True)
-        title.set_halign(Gtk.Align.START)
-        header.append(title)
-
-        self.toggle = Gtk.Switch()
-        self.toggle.set_active(self._en)
-        self.toggle.connect("state-set", self._on_toggle)
-        header.append(self.toggle)
-        card.append(header)
-
-        # Divider
-        card.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
-
-        # Slider: Night Light Warmth (Percentage 0% - 100%)
-        initial_pct = temp_to_pct(self._t)
-
-        row_nl = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        lbl_nl = Gtk.Label(label="Night Light Warmth")
-        lbl_nl.add_css_class("slider-label")
-        lbl_nl.set_hexpand(True)
-        lbl_nl.set_halign(Gtk.Align.START)
-        row_nl.append(lbl_nl)
-
-        self.val_nl = Gtk.Label(label=f"{initial_pct}%")
-        self.val_nl.add_css_class("val-badge")
-        row_nl.append(self.val_nl)
-        card.append(row_nl)
-
-        self.desc_nl = Gtk.Label(label=get_warmth_desc(initial_pct))
-        self.desc_nl.add_css_class("desc-label")
-        self.desc_nl.set_halign(Gtk.Align.START)
-        card.append(self.desc_nl)
-
-        self.scale_nl = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
-        self.scale_nl.set_value(initial_pct)
-        self.scale_nl.set_sensitive(self._en)
-        self.scale_nl.connect("value-changed", self._on_temp_pct_changed)
-        card.append(self.scale_nl)
-
-
-        self.status_lbl = Gtk.Label(label="✓ Auto-saved")
-        self.status_lbl.add_css_class("status-label")
-        self.status_lbl.set_margin_top(4)
-        card.append(self.status_lbl)
-
-        win.set_content(card)
-        win.present()
-
-    def _on_toggle(self, sw, state):
-        self._en = state
-        self.scale_nl.set_sensitive(state)
-        self._debounce()
-        return False
-
-    def _on_temp_pct_changed(self, sc):
-        pct = int(sc.get_value())
-        self.val_nl.set_label(f"{pct}%")
-        self.desc_nl.set_label(get_warmth_desc(pct))
-        self._t = pct_to_temp(pct)
-        self._debounce()
-
-    def _debounce(self):
-        if self._timer:
-            GLib.source_remove(self._timer)
-        self._timer = GLib.timeout_add(250, self._do_apply_and_save)
-
-    def _do_apply_and_save(self):
-        self._timer = None
-        def _do():
-            _save_conf(self._t, self._en)
-            _patch_hyprland(self._t, self._en)
-            _apply_live(self._t, self._en)
-        threading.Thread(target=_do, daemon=True).start()
-        return False
-
-    def _set_sens(self, e):
-        self.ts.set_sensitive(e)
-        self.gs.set_sensitive(e)
-
-    def _upd_temp(self, t):
-        self.tv.set_label(str(t))
-        for c in ["temp-warm", "temp-mid", "temp-cool"]:
-            self.tv.remove_css_class(c)
-        if t <= 3500:
-            self.tv.add_css_class("temp-warm"); d = "🔴 Very warm · amber"
-        elif t <= 4500:
-            self.tv.add_css_class("temp-mid");  d = "🟡 Warm neutral · balanced"
-        elif t <= 5500:
-            d = "⚪ Natural · daylight"
-        else:
-            self.tv.add_css_class("temp-cool"); d = "🔵 Cool · blue-white"
-        self.td.set_label(d)
-
-    def _highlight_matching_preset(self, t, g):
-        """Highlight the preset button whose (temp, gamma) matches current."""
-        for i, btn in enumerate(self._preset_btns):
-            _, pt, pg, _ = PRESETS[i]
-            if pt == t and pg == g:
-                btn.add_css_class("active-preset")
-            else:
-                btn.remove_css_class("active-preset")
-
-    def _show_status(self, msg):
-        self.sl.set_label(msg)
-        GLib.timeout_add_seconds(4, lambda: self.sl.set_label("") or False)
-
-
-# ── Entry point ───────────────────────────────────────────────────────────────
-
-if __name__ == "__main__":
-    NightLightApp().run(None)
-
-NLEOF
+install -D -m 755 "$SCRIPT_DIR/nightlight-gui.py" "$HOME/.local/share/bin/nightlight-gui.py"
 chmod +x "$HOME/.local/share/bin/nightlight-gui.py"
 
 # --- Write ~/.local/share/bin/nightlight-start.sh ---
@@ -2547,12 +1163,11 @@ bind = $mainMod+Shift, 0, movetoworkspace, 10
 bind = $mainMod+Ctrl+Alt, Right, movetoworkspace, r+1
 bind = $mainMod+Ctrl+Alt, Left, movetoworkspace, r-1
 
-# Move active window around current workspace with mainMod + SHIFT + CTRL [←→↑↓]
-$moveactivewindow=grep -q "true" <<< $(hyprctl activewindow -j | jq -r .floating) && hyprctl dispatch moveactive
-bindd = $mainMod SHIFT CTRL, left, Move activewindow left, exec, $moveactivewindow -30 0 || hyprctl dispatch movewindow l
-bindd = $mainMod SHIFT CTRL, right, Move activewindow right, exec, $moveactivewindow 30 0 || hyprctl dispatch movewindow r
-bindd = $mainMod SHIFT CTRL, up, Move activewindow up, exec, $moveactivewindow  0 -30 || hyprctl dispatch movewindow u
-bindd = $mainMod SHIFT CTRL, down, Move activewindow down, exec, $moveactivewindow 0 30 || hyprctl dispatch movewindow d
+# Move the active window to the screen on the left/right/above/below with mainMod + SHIFT + CTRL [←→↑↓]
+bindd = $mainMod SHIFT CTRL, left, Move window to left monitor, movewindow, mon:l
+bindd = $mainMod SHIFT CTRL, right, Move window to right monitor, movewindow, mon:r
+bindd = $mainMod SHIFT CTRL, up, Move window to upper monitor, movewindow, mon:u
+bindd = $mainMod SHIFT CTRL, down, Move window to lower monitor, movewindow, mon:d
 
 # Scroll through existing workspaces
 bind = $mainMod, mouse_down, workspace, e+1
@@ -2701,390 +1316,42 @@ EOF
 
 
 
-# --- WRITE ~/.config/hypr/monitors.conf (DYNAMIC DETECTION) ---
-echo -e "${CYAN}Dynamically detecting connected monitors...${NC}"
+# --- WRITE ~/.config/hypr/monitors.conf (N-monitor engine) ---
+# hypr-monitor-setup.py handles any number of screens: native mode at max Hz,
+# VRR only where the EDID advertises Adaptive-Sync, ICC profiles, rotated-width
+# offsets and workspaces 1-10 spread over all screens.
+echo -e "${CYAN}Detecting connected monitors...${NC}"
+mkdir -p "$HOME/.local/share/bin"
+MON_ENGINE="$HOME/.local/share/bin/hypr-monitor-setup.py"
+cp "$SCRIPT_DIR/hypr-monitor-setup.py" "$MON_ENGINE" && chmod +x "$MON_ENGINE"
+python3 "$MON_ENGINE" --list || true
+read -r -p "Set screen order, primary screen and rotation now? (y/n) [y]: " mon_choice
+mon_choice="${mon_choice:-y}"
+if [[ "$mon_choice" =~ ^[Yy]$ ]]; then
+    python3 "$MON_ENGINE" --interactive --no-apply || python3 "$MON_ENGINE" --auto --no-apply
+else
+    python3 "$MON_ENGINE" --auto --no-apply
+fi
+PRIMARY_MONITOR="$(python3 "$MON_ENGINE" --get-primary 2>/dev/null)"
 
-# Initialize arrays/variables
-MONITOR_CONFIGS=""
-WORKSPACE_RULES=""
-MAIN_NAME=""
-MAIN_WIDTH=1920
-MAIN_HEIGHT=1080
-MAIN_HZ=60
-SIDE_NAME=""
-SIDE_WIDTH=1920
-SIDE_HEIGHT=1080
-SIDE_HZ=60
-SIDE_TRANSFORM=1
-MAIN_TRANSFORM=0
-OFFSET_X=0
-OFFSET_Y=0
-
-# Check if hyprctl is available and running
-if command -v hyprctl &>/dev/null && hyprctl monitors &>/dev/null; then
-    echo -e "${GREEN}Hyprland is running. Using hyprctl for dynamic monitor detection...${NC}"
-    MONITORS_JSON=$(hyprctl monitors -j)
-    
-    SORTED_MONITORS=$(echo "$MONITORS_JSON" | jq 'map(. + {maxHz: ([.availableModes[] | capture("@(?<rate>[0-9.]+)Hz") | .rate | tonumber] | max | round)}) | sort_by(.maxHz)')
-    NUM_MONITORS=$(echo "$SORTED_MONITORS" | jq '. | length')
-    
-    if [ "$NUM_MONITORS" -gt 0 ]; then
-        if [ "$NUM_MONITORS" -gt 1 ]; then
-            # Build list of connected monitors for user prompt
-            MONITOR_LIST_ARGS=()
-            for i in $(seq 0 $((NUM_MONITORS - 1))); do
-                m_name=$(echo "$MONITORS_JSON" | jq -r ".[$i].name")
-                m_w=$(echo "$MONITORS_JSON" | jq -r ".[$i].width")
-                m_h=$(echo "$MONITORS_JSON" | jq -r ".[$i].height")
-                m_hz=$(echo "$MONITORS_JSON" | jq -r ".[$i].refreshRate" | cut -d'.' -f1)
-                m_model=$(echo "$MONITORS_JSON" | jq -r ".[$i].model // \"Display\"")
-                MONITOR_LIST_ARGS+=("$m_name" "${m_w}x${m_h}@${m_hz}Hz ($m_model)")
-            done
-
-            SELECTED_PRIMARY=""
-            if command -v zenity &>/dev/null && { [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; }; then
-                SELECTED_PRIMARY=$(zenity --list \
-                    --title="Primary Screen Selection" \
-                    --text="Multiple monitors detected.\nWhich display is your PRIMARY screen?" \
-                    --column="Monitor Port" \
-                    --column="Details & Resolution" \
-                    "${MONITOR_LIST_ARGS[@]}" \
-                    --width=480 --height=320 2>/dev/null)
-            fi
-
-            if [ -n "$SELECTED_PRIMARY" ]; then
-                MAIN_NAME="$SELECTED_PRIMARY"
-                SIDE_NAME=$(echo "$MONITORS_JSON" | jq -r ".[] | select(.name != \"$MAIN_NAME\") | .name" | head -n 1)
-            else
-                # Default to highest refresh rate monitor
-                MAIN_NAME=$(echo "$SORTED_MONITORS" | jq -r 'last | .name')
-                SIDE_NAME=$(echo "$SORTED_MONITORS" | jq -r '.[0] | .name')
-            fi
-
-            # Ask position relative to secondary monitor (RIGHT or LEFT)
-            PRIMARY_POSITION="RIGHT"
-            if command -v zenity &>/dev/null && { [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; }; then
-                POS_CHOICE=$(zenity --list \
-                    --title="Primary Screen Placement" \
-                    --text="Where is your PRIMARY screen ($MAIN_NAME) positioned relative to your secondary screen ($SIDE_NAME)?" \
-                    --column="Position Option" \
-                    "RIGHT (Primary screen is on the right of secondary screen)" \
-                    "LEFT (Primary screen is on the left of secondary screen)" \
-                    --width=520 --height=250 2>/dev/null)
-                if [[ "$POS_CHOICE" =~ "LEFT" ]]; then
-                    PRIMARY_POSITION="LEFT"
-                fi
-            fi
-
-            # Ask SDDM Screen Target
-            SELECTED_SDDM=""
-            if command -v zenity &>/dev/null && { [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; }; then
-                SELECTED_SDDM=$(zenity --list \
-                    --title="SDDM Login Screen Display" \
-                    --text="Which monitor should the SDDM Login Screen appear on?" \
-                    --column="Display Port" \
-                    --column="Details" \
-                    "${MONITOR_LIST_ARGS[@]}" \
-                    --width=480 --height=320 2>/dev/null)
-            else
-                echo -e "\n${YELLOW}Select which monitor should display the SDDM Login Screen:${NC}"
-                for idx in "${!MONITOR_LIST_ARGS[@]}"; do
-                    if [ $((idx % 2)) -eq 0 ]; then
-                        echo -e "  [$((idx/2 + 1))] ${MONITOR_LIST_ARGS[idx]} - ${MONITOR_LIST_ARGS[idx+1]}"
-                    fi
-                done
-                read -p "Enter choice [1-$NUM_MONITORS] (Default: 1): " sddm_choice
-                sddm_choice="${sddm_choice:-1}"
-                sel_idx=$(( (sddm_choice - 1) * 2 ))
-                SELECTED_SDDM="${MONITOR_LIST_ARGS[sel_idx]}"
-            fi
-
-            if [ -n "$SELECTED_SDDM" ]; then
-                sudo mkdir -p /etc/sddm.conf.d 2>/dev/null
-                echo "$SELECTED_SDDM" | sudo tee /etc/sddm.conf.d/target_monitor >/dev/null 2>&1
-                sudo chmod 644 /etc/sddm.conf.d/target_monitor 2>/dev/null
-
-                if [ -f "$SCRIPT_DIR/sddm-screen-config.py" ]; then
-                    python3 "$SCRIPT_DIR/sddm-screen-config.py" --set "$SELECTED_SDDM" &>/dev/null || true
-                fi
-                echo -e "${GREEN}[OK] SDDM login screen primary output set to $SELECTED_SDDM${NC}"
-            fi
-
-            # Ask Initial Boot Cursor Screen Target
-            SELECTED_CURSOR=""
-            if command -v zenity &>/dev/null && { [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; }; then
-                SELECTED_CURSOR=$(zenity --list \
-                    --title="Initial Boot Cursor Screen" \
-                    --text="Which display should the mouse cursor default to on initial boot?" \
-                    --column="Display Port" \
-                    --column="Details" \
-                    "${MONITOR_LIST_ARGS[@]}" \
-                    --width=480 --height=320 2>/dev/null)
-            else
-                echo -e "\n${YELLOW}Select which display the mouse cursor should default to on boot:${NC}"
-                for idx in "${!MONITOR_LIST_ARGS[@]}"; do
-                    if [ $((idx % 2)) -eq 0 ]; then
-                        echo -e "  [$((idx/2 + 1))] ${MONITOR_LIST_ARGS[idx]} - ${MONITOR_LIST_ARGS[idx+1]}"
-                    fi
-                done
-                read -p "Enter choice [1-$NUM_MONITORS] (Default: 1): " cursor_choice
-                cursor_choice="${cursor_choice:-1}"
-                sel_idx=$(( (cursor_choice - 1) * 2 ))
-                SELECTED_CURSOR="${MONITOR_LIST_ARGS[sel_idx]}"
-            fi
-
-            if [ -n "$SELECTED_CURSOR" ]; then
-                if [ -f "$SCRIPT_DIR/setup-initial-cursor-screen.py" ]; then
-                    python3 "$SCRIPT_DIR/setup-initial-cursor-screen.py" --set "$SELECTED_CURSOR" &>/dev/null || true
-                fi
-                echo -e "${GREEN}[OK] Boot cursor default screen set to $SELECTED_CURSOR${NC}"
-            fi
-
-            MAIN_HZ=$(echo "$MONITORS_JSON" | jq -r ".[] | select(.name == \"$MAIN_NAME\") | .refreshRate" | cut -d'.' -f1)
-            MAIN_WIDTH=$(echo "$MONITORS_JSON" | jq -r ".[] | select(.name == \"$MAIN_NAME\") | .width")
-            MAIN_HEIGHT=$(echo "$MONITORS_JSON" | jq -r ".[] | select(.name == \"$MAIN_NAME\") | .height")
-            MAIN_TRANSFORM=$(echo "$MONITORS_JSON" | jq -r ".[] | select(.name == \"$MAIN_NAME\") | .transform // 0")
-
-            SIDE_HZ=$(echo "$MONITORS_JSON" | jq -r ".[] | select(.name == \"$SIDE_NAME\") | .refreshRate" | cut -d'.' -f1)
-            SIDE_WIDTH=$(echo "$MONITORS_JSON" | jq -r ".[] | select(.name == \"$SIDE_NAME\") | .width")
-            SIDE_HEIGHT=$(echo "$MONITORS_JSON" | jq -r ".[] | select(.name == \"$SIDE_NAME\") | .height")
-            SIDE_TRANSFORM=$(echo "$MONITORS_JSON" | jq -r ".[] | select(.name == \"$SIDE_NAME\") | .transform // 0")
-
-            if [ "$SIDE_TRANSFORM" -eq 1 ] || [ "$SIDE_TRANSFORM" -eq 3 ]; then
-                ROTATED_SIDE_WIDTH=${SIDE_HEIGHT}
-                ROTATED_SIDE_HEIGHT=${SIDE_WIDTH}
-            else
-                ROTATED_SIDE_WIDTH=${SIDE_WIDTH}
-                ROTATED_SIDE_HEIGHT=${SIDE_HEIGHT}
-            fi
-            
-            if [ "$MAIN_TRANSFORM" -eq 1 ] || [ "$MAIN_TRANSFORM" -eq 3 ]; then
-                ROTATED_MAIN_WIDTH=${MAIN_HEIGHT}
-                ROTATED_MAIN_HEIGHT=${MAIN_WIDTH}
-            else
-                ROTATED_MAIN_WIDTH=${MAIN_WIDTH}
-                ROTATED_MAIN_HEIGHT=${MAIN_HEIGHT}
-            fi
-            
-            OFFSET_Y=$(( (ROTATED_SIDE_HEIGHT - ROTATED_MAIN_HEIGHT) / 2 ))
-            [ $OFFSET_Y -lt 0 ] && OFFSET_Y=0
-
-            if [ "$PRIMARY_POSITION" = "RIGHT" ]; then
-                OFFSET_X=${ROTATED_SIDE_WIDTH}
-                MONITOR_CONFIGS="monitor = ${MAIN_NAME},${MAIN_WIDTH}x${MAIN_HEIGHT}@${MAIN_HZ},${OFFSET_X}x${OFFSET_Y},1,transform,${MAIN_TRANSFORM}\n"
-                MONITOR_CONFIGS="${MONITOR_CONFIGS}monitor = ${SIDE_NAME},${SIDE_WIDTH}x${SIDE_HEIGHT}@${SIDE_HZ},0x0,1,transform,${SIDE_TRANSFORM}"
-            else
-                OFFSET_X=${ROTATED_MAIN_WIDTH}
-                MONITOR_CONFIGS="monitor = ${MAIN_NAME},${MAIN_WIDTH}x${MAIN_HEIGHT}@${MAIN_HZ},0x${OFFSET_Y},1,transform,${MAIN_TRANSFORM}\n"
-                MONITOR_CONFIGS="${MONITOR_CONFIGS}monitor = ${SIDE_NAME},${SIDE_WIDTH}x${SIDE_HEIGHT}@${SIDE_HZ},${OFFSET_X}x0,1,transform,${SIDE_TRANSFORM}"
-            fi
-            
-            # Workspace rules for dual-monitor
-            WORKSPACE_RULES="# Workspace Rules\n"
-            for w in {1..8}; do
-                WORKSPACE_RULES="${WORKSPACE_RULES}workspace = ${w}, monitor:${MAIN_NAME}"
-                [ $w -eq 1 ] && WORKSPACE_RULES="${WORKSPACE_RULES}, default:true"
-                WORKSPACE_RULES="${WORKSPACE_RULES}\n"
-            done
-            for w in {9..10}; do
-                WORKSPACE_RULES="${WORKSPACE_RULES}workspace = ${w}, monitor:${SIDE_NAME}"
-                [ $w -eq 9 ] && WORKSPACE_RULES="${WORKSPACE_RULES}, default:true"
-                WORKSPACE_RULES="${WORKSPACE_RULES}\n"
-            done
-        else
-            # Single monitor setup
-            MAIN_NAME=$(echo "$SORTED_MONITORS" | jq -r 'last | .name')
-            MAIN_HZ=$(echo "$SORTED_MONITORS" | jq -r 'last | .maxHz')
-            MAIN_WIDTH=$(echo "$SORTED_MONITORS" | jq -r 'last | .width')
-            MAIN_HEIGHT=$(echo "$SORTED_MONITORS" | jq -r 'last | .height')
-            MONITOR_CONFIGS="monitor = ${MAIN_NAME},${MAIN_WIDTH}x${MAIN_HEIGHT}@${MAIN_HZ},0x0,1"
-            WORKSPACE_RULES="# Workspace Rules\n"
-            for w in {1..10}; do
-                WORKSPACE_RULES="${WORKSPACE_RULES}workspace = ${w}, monitor:${MAIN_NAME}"
-                [ $w -eq 1 ] && WORKSPACE_RULES="${WORKSPACE_RULES}, default:true"
-                WORKSPACE_RULES="${WORKSPACE_RULES}\n"
-            done
-        fi
+if [ -n "$PRIMARY_MONITOR" ]; then
+    # SDDM shows only on the primary screen (all others are switched off at the greeter)
+    python3 "$SCRIPT_DIR/sddm-screen-config.py" --set "$PRIMARY_MONITOR" || true
+    # The mouse cursor starts on the primary screen after login
+    python3 "$SCRIPT_DIR/setup-initial-cursor-screen.py" --set "$PRIMARY_MONITOR" || true
+    echo -e "${GREEN}[OK] Primary screen: $PRIMARY_MONITOR (login screen + boot cursor)${NC}"
+    # GPUs with several HDMI/DP screens: send sound to the one on the primary screen
+    if command -v pactl &>/dev/null && pactl info &>/dev/null; then
+        python3 "$SCRIPT_DIR/setup-hdmi-audio.py" --auto || true
     fi
 fi
 
-# Fallback: If no monitor configs were generated (e.g. hyprctl not running), use DRM sysfs
-if [ -z "$MONITOR_CONFIGS" ]; then
-    echo -e "${YELLOW}Hyprland is not running or no monitors detected via hyprctl. Scanning /sys/class/drm/...${NC}"
-    CONNECTED_DEVS=()
-    for card in /sys/class/drm/card*-*; do
-        if [ -f "$card/status" ] && [ "$(cat "$card/status")" = "connected" ]; then
-            dev_name=$(basename "$card" | cut -d'-' -f2-)
-            CONNECTED_DEVS+=("$dev_name")
-        fi
-    done
-    
-    NUM_DEVS=${#CONNECTED_DEVS[@]}
-    if [ "$NUM_DEVS" -gt 0 ]; then
-        # Take the first one as main
-        MAIN_NAME="${CONNECTED_DEVS[0]}"
-        MAIN_WIDTH=1920
-        MAIN_HEIGHT=1080
-        MAIN_HZ=60
-        
-        if [ "$NUM_DEVS" -gt 1 ]; then
-            SIDE_NAME="${CONNECTED_DEVS[1]}"
-            SIDE_HZ=60
-            
-            # Read native resolution for the side monitor to calculate offsets
-            # Fallback to default if files are missing
-            SIDE_MODE=$(head -n 1 /sys/class/drm/card*-${SIDE_NAME}/modes 2>/dev/null)
-            SIDE_WIDTH=$(echo "$SIDE_MODE" | cut -d'x' -f1)
-            SIDE_HEIGHT=$(echo "$SIDE_MODE" | cut -d'x' -f2)
-            
-            SIDE_WIDTH=${SIDE_WIDTH:-1920}
-            SIDE_HEIGHT=${SIDE_HEIGHT:-1080}
-            
-            if [ "$SIDE_TRANSFORM" -eq 1 ] || [ "$SIDE_TRANSFORM" -eq 3 ]; then
-                ROTATED_SIDE_WIDTH=${SIDE_HEIGHT}
-                ROTATED_SIDE_HEIGHT=${SIDE_WIDTH}
-            else
-                ROTATED_SIDE_WIDTH=${SIDE_WIDTH}
-                ROTATED_SIDE_HEIGHT=${SIDE_HEIGHT}
-            fi
-            
-            if [ "$MAIN_TRANSFORM" -eq 1 ] || [ "$MAIN_TRANSFORM" -eq 3 ]; then
-                ROTATED_MAIN_WIDTH=1080
-                ROTATED_MAIN_HEIGHT=1920
-            else
-                ROTATED_MAIN_WIDTH=1920
-                ROTATED_MAIN_HEIGHT=1080
-            fi
-            
-            OFFSET_X=${ROTATED_SIDE_WIDTH}
-            OFFSET_Y=$(( (ROTATED_SIDE_HEIGHT - ROTATED_MAIN_HEIGHT) / 2 ))
-            [ $OFFSET_Y -lt 0 ] && OFFSET_Y=0
-            
-            MONITOR_CONFIGS="monitor = ${MAIN_NAME},preferred,${OFFSET_X}x${OFFSET_Y},1,transform,${MAIN_TRANSFORM}\n"
-            MONITOR_CONFIGS="${MONITOR_CONFIGS}monitor = ${SIDE_NAME},preferred,0x0,1,transform,${SIDE_TRANSFORM}"
-            
-            WORKSPACE_RULES="# Workspace Rules\n"
-            for w in {1..8}; do
-                WORKSPACE_RULES="${WORKSPACE_RULES}workspace = ${w}, monitor:${MAIN_NAME}"
-                [ $w -eq 1 ] && WORKSPACE_RULES="${WORKSPACE_RULES}, default:true"
-                WORKSPACE_RULES="${WORKSPACE_RULES}\n"
-            done
-            for w in {9..10}; do
-                WORKSPACE_RULES="${WORKSPACE_RULES}workspace = ${w}, monitor:${SIDE_NAME}"
-                [ $w -eq 9 ] && WORKSPACE_RULES="${WORKSPACE_RULES}, default:true"
-                WORKSPACE_RULES="${WORKSPACE_RULES}\n"
-            done
-        else
-            # Single monitor fallback
-            MONITOR_CONFIGS="monitor = ${MAIN_NAME},preferred,auto,1"
-            WORKSPACE_RULES="# Workspace Rules\n"
-            for w in {1..10}; do
-                WORKSPACE_RULES="${WORKSPACE_RULES}workspace = ${w}, monitor:${MAIN_NAME}"
-                [ $w -eq 1 ] && WORKSPACE_RULES="${WORKSPACE_RULES}, default:true"
-                WORKSPACE_RULES="${WORKSPACE_RULES}\n"
-            done
-        fi
-    else
-        # Extreme fallback
-        MONITOR_CONFIGS="monitor = ,preferred,auto,1"
-        WORKSPACE_RULES="# Workspace Rules\nworkspace = 1, monitor:, default:true"
-    fi
-fi
-
-# Override offsets and transforms if they already exist in the user's config (so we don't reset them)
-if [ -n "$SIDE_NAME" ] && [ -f "$HOME/.config/hypr/monitors.conf" ]; then
-    # Match the side monitor config line to extract transform value if it exists
-    EXISTING_SIDE_LINE=$(grep -E "^\s*monitor\s*=\s*${SIDE_NAME}\s*," "$HOME/.config/hypr/monitors.conf" | head -n 1)
-    if [ -n "$EXISTING_SIDE_LINE" ]; then
-        if [[ "$EXISTING_SIDE_LINE" =~ transform,([0-7]) ]]; then
-            SIDE_TRANSFORM="${BASH_REMATCH[1]}"
-            echo -e "${GREEN}[INFO] Preserving existing monitor transform: ${SIDE_TRANSFORM}${NC}"
-        fi
-    fi
-
-    # Match the main monitor config line to extract transform value if it exists
-    EXISTING_MAIN_LINE=$(grep -E "^\s*monitor\s*=\s*${MAIN_NAME}\s*," "$HOME/.config/hypr/monitors.conf" | head -n 1)
-    if [ -n "$EXISTING_MAIN_LINE" ]; then
-        if [[ "$EXISTING_MAIN_LINE" =~ transform,([0-7]) ]]; then
-            MAIN_TRANSFORM="${BASH_REMATCH[1]}"
-            echo -e "${GREEN}[INFO] Preserving existing main monitor transform: ${MAIN_TRANSFORM}${NC}"
-        fi
-    fi
-
-    # Match the main monitor config line to extract XxY coordinates
-    EXISTING_LINE=$(grep -E "^\s*monitor\s*=\s*${MAIN_NAME}\s*," "$HOME/.config/hypr/monitors.conf" | head -n 1)
-    if [ -n "$EXISTING_LINE" ]; then
-        POS_FIELD=$(echo "$EXISTING_LINE" | cut -d',' -f3 | tr -d '[:space:]')
-        if [[ "$POS_FIELD" =~ ^([0-9]+)x([0-9]+)$ ]]; then
-            EXISTING_X="${BASH_REMATCH[1]}"
-            EXISTING_Y="${BASH_REMATCH[2]}"
-            echo -e "${GREEN}[INFO] Preserving existing monitor offset: ${EXISTING_X}x${EXISTING_Y}${NC}"
-            OFFSET_X=$EXISTING_X
-            OFFSET_Y=$EXISTING_Y
-            
-            # Recalculate dimensions based on the transform
-            if [ "$SIDE_TRANSFORM" -eq 1 ] || [ "$SIDE_TRANSFORM" -eq 3 ]; then
-                ROTATED_SIDE_WIDTH=${SIDE_HEIGHT}
-            else
-                ROTATED_SIDE_WIDTH=${SIDE_WIDTH}
-            fi
-            OFFSET_X=${ROTATED_SIDE_WIDTH}
-            
-            MONITOR_CONFIGS="monitor = ${MAIN_NAME},${MAIN_WIDTH}x${MAIN_HEIGHT}@${MAIN_HZ},${OFFSET_X}x${OFFSET_Y},1,transform,${MAIN_TRANSFORM}\n"
-            MONITOR_CONFIGS="${MONITOR_CONFIGS}monitor = ${SIDE_NAME},${SIDE_WIDTH}x${SIDE_HEIGHT}@${SIDE_HZ},0x0,1,transform,${SIDE_TRANSFORM}"
-        fi
-    fi
-fi
-
-# Write to file
-mkdir -p "$HOME/.config/hypr"
-cat << MONEOF > "$HOME/.config/hypr/monitors.conf"
-# █▀▄▀█ █▀█ █▄░█ █ ▀█▀ █▀█ █▀█ █▀
-# █░▀░█ █▄█ █░▀█ █ ░█░ █▄█ █▀▄ ▄█
-# Dynamically generated by restore_my_setup.sh
-
-$(echo -e "$MONITOR_CONFIGS")
-
-$(echo -e "$WORKSPACE_RULES")
-MONEOF
-echo -e "${GREEN}[OK] Dynamic monitors.conf generated successfully!${NC}"
-
-# Calibrate monitor alignment if dual monitor detected
-if [ -n "$SIDE_NAME" ]; then
-    # Ensure scripts are copied to local bin first
-    mkdir -p "$HOME/.local/share/bin"
-    if [ -f "$SCRIPT_DIR/monitor-alignment.sh" ]; then
-        cp "$SCRIPT_DIR/monitor-alignment.sh" "$HOME/.local/share/bin/" 2>/dev/null || true
-        chmod +x "$HOME/.local/share/bin/monitor-alignment.sh" 2>/dev/null || true
-    fi
-
-    # Only run calibration if display environment is active (GUI mode)
-    if [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; then
-        echo -e "${BLUE}${BOLD}Dual monitors detected. Prompting for mouse alignment calibration...${NC}"
-        
-        # Prompt the user if they want to calibrate
-        if zenity --question \
-            --title="Mouse Path Alignment Calibration" \
-            --text="Dual monitors detected.\nWould you like to calibrate the vertical alignment of the mouse path or control screen orientations now?" \
-            --ok-label="Calibrate Now" \
-            --cancel-label="Skip" \
-            --width=400 2>/dev/null; then
-            
-            ALIGN_SCRIPT=""
-            if [ -f "$SCRIPT_DIR/monitor-alignment.sh" ]; then
-                ALIGN_SCRIPT="$SCRIPT_DIR/monitor-alignment.sh"
-            elif [ -f "$HOME/cachy-os-config-related/monitor-alignment.sh" ]; then
-                ALIGN_SCRIPT="$HOME/cachy-os-config-related/monitor-alignment.sh"
-            elif [ -f "$HOME/.local/share/bin/monitor-alignment.sh" ]; then
-                ALIGN_SCRIPT="$HOME/.local/share/bin/monitor-alignment.sh"
-            fi
-
-            if [ -n "$ALIGN_SCRIPT" ]; then
-                bash "$ALIGN_SCRIPT"
-            else
-                echo -e "${RED}[ERROR] monitor-alignment.sh not found!${NC}"
-            fi
-        fi
+# Fine-tune alignment live, only inside a running Hyprland session with 2+ screens
+cp "$SCRIPT_DIR/monitor-alignment.sh" "$HOME/.local/share/bin/" && chmod +x "$HOME/.local/share/bin/monitor-alignment.sh"
+if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ] && [ "$(hyprctl monitors -j 2>/dev/null | jq 'length' 2>/dev/null || echo 0)" -gt 1 ]; then
+    read -r -p "Fine-tune monitor alignment live now? (y/n) [n]: " calib_choice
+    if [[ "$calib_choice" =~ ^[Yy]$ ]]; then
+        python3 "$MON_ENGINE" --calibrate
     fi
 fi
 
@@ -4212,6 +2479,10 @@ fi
 echo -e "${GREEN}[OK] SDDM Astronaut theme (Jake the Dog variant) configured successfully!${NC}"
 
 # --- RTL8188EUS USB Wi-Fi Hotspot driver configuration ---
+# Only on machines with a TP-Link TL-WN722N v2/v3 plugged in: blacklisting the
+# in-kernel rtl8xxxu driver elsewhere would break other Realtek adapters.
+[ -z "${HAS_RTL8188EUS:-}" ] && { lsusb 2>/dev/null | grep -qiE "2357:010c|0bda:8179|0bda:0179" && HAS_RTL8188EUS=true || HAS_RTL8188EUS=false; }
+if [ "$HAS_RTL8188EUS" = "true" ]; then
 echo -e "\n${BLUE}${BOLD}Configuring RTL8188EUS USB Wi-Fi driver and blacklisting conflicting drivers...${NC}"
 
 # Blacklist default rtl8xxxu driver
@@ -4276,6 +2547,8 @@ else
     echo -e "${YELLOW}[WARNING] No RTL8188EUS driver source found in /usr/src/8188eu-*. Skipping driver patch.${NC}"
 fi
 
+fi
+
 # --- Nvidia DRM Configuration ---
 if [ "$GPU_VENDOR" = "nvidia" ]; then
     echo -e "\n${BLUE}${BOLD}Configuring Nvidia DRM modesetting...${NC}"
@@ -4285,7 +2558,7 @@ options nvidia_drm modeset=1
 options nvidia NVreg_RegistryDwords="PerfLevelSrc=0x2222"
 NVIEOF
     echo -e "${GREEN}[OK] Nvidia DRM configured successfully!${NC}"
-else
+elif [ "$GPU_VENDOR" = "amd" ] || [ "$GPU_VENDOR" = "intel" ]; then
     if [ -f /etc/modprobe.d/nvidia.conf ]; then
         echo -e "\n${BLUE}${BOLD}Removing Nvidia DRM configuration (non-Nvidia system detected)...${NC}"
         sudo rm -f /etc/modprobe.d/nvidia.conf
@@ -4423,14 +2696,18 @@ ZENCHROME
         # Write userContent.css
         cat << 'ZENCONTENT' > "$profile/chrome/userContent.css"
 /*
- * Zen Browser - Web Content Font & Color Optimization
+ * Zen Browser - Web Content Font & Page Optimization
  */
 
-/* Force the exact terminal background color on all pages */
-@-moz-document url-prefix(http), url-prefix(https), url-prefix(about:) {
+/* Empty / New Tab page background */
+@-moz-document url("about:blank"), url("about:newtab"), url("about:home") {
     :root, body, html {
-        background-color: #090a09 !important;
+        background-color: #0e0f0e !important;
     }
+}
+
+/* Smooth font rendering on all websites */
+@-moz-document url-prefix(http), url-prefix(https), url-prefix(about:) {
     body, p, span, a, li, h1, h2, h3, h4, h5, h6, input, textarea, button {
         -webkit-font-smoothing: antialiased !important;
         -moz-osx-font-smoothing: grayscale !important;
@@ -4764,14 +3041,13 @@ if [ -n "$WAYLAND_DISPLAY" ] || [ -n "$DISPLAY" ]; then
     echo -e "${MAGENTA}${BOLD}├──────────────────────────────────────────────────────────┤${NC}"
     echo -e "${MAGENTA}│  A settings window is opening on your screen.            ${MAGENTA}│${NC}"
     echo -e "${MAGENTA}│                                                           ${MAGENTA}│${NC}"
-    echo -e "${MAGENTA}│  → Pick a color temperature preset that suits you.       ${MAGENTA}│${NC}"
-    echo -e "${MAGENTA}│  → Fine-tune temperature (K) and brightness if needed.   ${MAGENTA}│${NC}"
-    echo -e "${MAGENTA}│  → Click  💾 Apply & Continue  when you're happy.        ${MAGENTA}│${NC}"
-    echo -e "${MAGENTA}│  → Or click  Skip  to use the default (3500K warm).     ${MAGENTA}│${NC}"
+    echo -e "${MAGENTA}│  → Toggle night light and drag the warmth slider.        ${MAGENTA}│${NC}"
+    echo -e "${MAGENTA}│  → Changes save automatically.                            ${MAGENTA}│${NC}"
+    echo -e "${MAGENTA}│  → Close the window to continue the installation.        ${MAGENTA}│${NC}"
     echo -e "${MAGENTA}│                                                           ${MAGENTA}│${NC}"
     echo -e "${MAGENTA}│  You can always reopen it later with:  Super + Alt + N   ${MAGENTA}│${NC}"
     echo -e "${MAGENTA}${BOLD}└──────────────────────────────────────────────────────────┘${NC}"
-    python3 "$HOME/.local/share/bin/nightlight-gui.py" --setup || true
+    python3 "$HOME/.local/share/bin/nightlight-gui.py" || true
 fi
 
 
@@ -4951,68 +3227,7 @@ EOF
 # --- WRITE TASKS MANAGER SCRIPT ---
 echo -e "${CYAN}Writing ~/.local/share/bin/manage_tasks.py...${NC}"
 mkdir -p "$HOME/.local/share/bin"
-cat << 'EOF' > "$HOME/.local/share/bin/manage_tasks.py"
-#!/usr/bin/env python3
-import sys
-import os
-
-TASKS_FILE = os.path.expanduser("~/.config/fastfetch/tasks.txt")
-
-def read_tasks():
-    if not os.path.exists(TASKS_FILE):
-        return []
-    with open(TASKS_FILE, 'r') as f:
-        return [line.strip() for line in f if line.strip()]
-
-def write_tasks(tasks):
-    os.makedirs(os.path.dirname(TASKS_FILE), exist_ok=True)
-    with open(TASKS_FILE, 'w') as f:
-        for t in tasks:
-            f.write(t + "\n")
-
-def add_or_update(task_text, new_prefix):
-    tasks = read_tasks()
-    found = False
-    new_tasks = []
-    
-    cleaned_query = task_text.strip().lower()
-    
-    for t in tasks:
-        content = t
-        for pfx in ["[ ]", "[/]", "[x]", "- "]:
-            if t.startswith(pfx):
-                content = t[len(pfx):].strip()
-                break
-        
-        if content.lower() == cleaned_query:
-            new_tasks.append(f"{new_prefix} {content}")
-            found = True
-        else:
-            new_tasks.append(t)
-            
-    if not found:
-        new_tasks.append(f"{new_prefix} {task_text.strip()}")
-        
-    write_tasks(new_tasks)
-
-def main():
-    if len(sys.argv) < 3:
-        print("Usage: manage_tasks.py <todo|doing|done> <task_text>")
-        sys.exit(1)
-        
-    action = sys.argv[1]
-    task_text = sys.argv[2]
-    
-    if action == "todo":
-        add_or_update(task_text, "[ ]")
-    elif action == "doing":
-        add_or_update(task_text, "[/]")
-    elif action == "done":
-        add_or_update(task_text, "[x]")
-
-if __name__ == "__main__":
-    main()
-EOF
+install -D -m 755 "$SCRIPT_DIR/manage_tasks.py" "$HOME/.local/share/bin/manage_tasks.py"
 chmod +x "$HOME/.local/share/bin/manage_tasks.py"
 
 # --- WRITE BGAPPS SCRIPTS (window switcher helper) ---
@@ -5105,166 +3320,12 @@ echo -e "${YELLOW}TIP: Use Super+Tab to switch between background apps via rofi$
 # --- WRITE PRAYER TIMES SCRIPT ---
 echo -e "${CYAN}Writing ~/.local/share/bin/prayer_times.py...${NC}"
 mkdir -p "$HOME/.local/share/bin"
-cat << 'EOF' > "$HOME/.local/share/bin/prayer_times.py"
-#!/usr/bin/env python3
-import urllib.request
-import json
-import datetime
-import os
-import sys
-
-CACHE_FILE = "/tmp/prayer_times.json"
-
-def get_location():
-    try:
-        req = urllib.request.Request(
-            "http://ip-api.com/json",
-            headers={"User-Agent": "Mozilla/5.0"}
-        )
-        with urllib.request.urlopen(req, timeout=5) as response:
-            data = json.loads(response.read().decode())
-            return data.get("lat"), data.get("lon"), data.get("city")
-    except Exception:
-        return 30.0444, 31.2357, "Cairo"
-
-def get_prayer_timings(lat, lon):
-    today = datetime.date.today().isoformat()
-    if os.path.exists(CACHE_FILE):
-        try:
-            with open(CACHE_FILE, 'r') as f:
-                cached = json.load(f)
-                if cached.get("date") == today:
-                    return cached.get("timings")
-        except Exception:
-            pass
-
-    try:
-        url = f"http://api.aladhan.com/v1/timings?latitude={lat}&longitude={lon}&method=5"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=5) as response:
-            res = json.loads(response.read().decode())
-            timings = res["data"]["timings"]
-            with open(CACHE_FILE, 'w') as f:
-                json.dump({"date": today, "timings": timings}, f)
-            return timings
-    except Exception:
-        if os.path.exists(CACHE_FILE):
-            try:
-                with open(CACHE_FILE, 'r') as f:
-                    return json.load(f).get("timings")
-            except Exception:
-                pass
-        return None
-
-def parse_time(time_str):
-    parts = time_str.split(":")
-    return int(parts[0]), int(parts[1])
-
-def main():
-    lat, lon, city = get_location()
-    timings = get_prayer_timings(lat, lon)
-    if not timings:
-        print("No timings")
-        sys.exit(0)
-
-    prayers = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"]
-    now = datetime.datetime.now()
-    
-    prayer_times = []
-    for p in prayers:
-        t_str = timings.get(p)
-        if not t_str:
-            continue
-        h, m = parse_time(t_str)
-        p_time = now.replace(hour=h, minute=m, second=0, microsecond=0)
-        prayer_times.append((p, p_time))
-
-    next_p = None
-    next_p_time = None
-
-    for name, p_time in prayer_times:
-        if p_time > now:
-            next_p = name
-            next_p_time = p_time
-            break
-
-    if not next_p:
-        next_p = "Fajr"
-        f_str = timings.get("Fajr")
-        h, m = parse_time(f_str)
-        next_p_time = now.replace(hour=h, minute=m, second=0, microsecond=0) + datetime.timedelta(days=1)
-
-    diff = next_p_time - now
-    diff_seconds = diff.total_seconds()
-    hours = int(diff_seconds // 3600)
-    minutes = int((diff_seconds % 3600) // 60)
-    seconds = int(diff_seconds % 60)
-
-    next_p_time_str = next_p_time.strftime("%I:%M %p").lstrip('0')
-    print(f"{next_p} in {hours}:{minutes:02d}:{seconds:02d} ({next_p_time_str})")
-
-if __name__ == "__main__":
-    main()
-EOF
+install -D -m 755 "$SCRIPT_DIR/prayer_times.py" "$HOME/.local/share/bin/prayer_times.py"
 chmod +x "$HOME/.local/share/bin/prayer_times.py"
 
-# --- WRITE SDDM XSETUP SCRIPT ---
-echo -e "${CYAN}Writing /usr/share/sddm/scripts/Xsetup...${NC}"
-sudo mkdir -p /usr/share/sddm/scripts
-sudo tee /usr/share/sddm/scripts/Xsetup >/dev/null << 'XSEOF'
-#!/bin/sh
-# Xsetup - run as root before the login dialog appears
-
-# 1. Configure monitors dynamically (keep primary monitor and position secondary screens)
-CONNECTED_MONITORS=$(xrandr | grep " connected" | awk '{print $1}')
-MONITOR_COUNT=$(echo "$CONNECTED_MONITORS" | wc -l)
-if [ "$MONITOR_COUNT" -gt 1 ]; then
-    TARGET_MON=$(cat /etc/sddm.conf.d/target_monitor 2>/dev/null | tr -d '[:space:]')
-    PRIMARY_MONITOR=""
-    if [ -n "$TARGET_MON" ] && echo "$CONNECTED_MONITORS" | grep -qx "$TARGET_MON"; then
-        PRIMARY_MONITOR="$TARGET_MON"
-    fi
-    
-    if [ -z "$PRIMARY_MONITOR" ]; then
-        PRIMARY_MONITOR=$(echo "$CONNECTED_MONITORS" | head -n 1)
-    fi
-
-    if [ -n "$PRIMARY_MONITOR" ]; then
-        xrandr --output "$PRIMARY_MONITOR" --auto --primary 2>/dev/null || true
-        for mon in $CONNECTED_MONITORS; do
-            if [ "$mon" != "$PRIMARY_MONITOR" ]; then
-                xrandr --output "$mon" --auto --right-of "$PRIMARY_MONITOR" 2>/dev/null || true
-            fi
-        done
-    fi
-fi
-
-# 2. Set mouse sensitivity and flat acceleration profile
-for id in $(xinput list --id-only 2>/dev/null); do
-    xinput set-prop "$id" "libinput Accel Profile Enabled" 0 1 0 2>/dev/null || true
-    xinput set-prop "$id" "libinput Accel Speed" -0.5 2>/dev/null || true
-done
-
-# 3. Start gammastep for SDDM night light
-PRIMARY_USER=$(awk -F: '$3 >= 1000 && $3 < 60000 {print $1}' /etc/passwd | head -n 1)
-PRIMARY_HOME=$(getent passwd "$PRIMARY_USER" | cut -d: -f6)
-CONF="$PRIMARY_HOME/.config/hypr/nightlight.conf"
-TEMP=3500
-ENABLED=true
-
-if [ -f "$CONF" ]; then
-    t=$(grep -oP 'temperature=\K\d+' "$CONF" 2>/dev/null)
-    e=$(grep -oP 'enabled=\K\w+'     "$CONF" 2>/dev/null)
-    [ -n "$t" ] && TEMP=$t
-    [ "$e" = "false" ] && ENABLED=false
-fi
-
-if [ "$ENABLED" = "true" ]; then
-    pkill -x gammastep 2>/dev/null || true
-    gammastep -O "$TEMP" -P &
-fi
-XSEOF
-sudo chmod +x /usr/share/sddm/scripts/Xsetup
+# --- INSTALL SDDM XSETUP SCRIPT (login screen on the primary monitor only) ---
+echo -e "${CYAN}Installing /usr/share/sddm/scripts/Xsetup...${NC}"
+sudo install -D -m 755 "$SCRIPT_DIR/sddm-Xsetup.sh" /usr/share/sddm/scripts/Xsetup
 
 # Patch swwwallbash.sh if not already patched
 SWWWALLBASH_BIN="$HOME/.local/share/bin/swwwallbash.sh"
@@ -5441,7 +3502,7 @@ fi
 # Deploy all unified repo scripts to user bin
 if [ -d "$SCRIPT_DIR" ]; then
     mkdir -p "$HOME/.local/share/bin"
-    for tool in cachy_tools_menu.sh omar-fav-setup.sh setup-wordpress-local.sh fix-polkit-localwp.sh setup-waybar-glassmorphism.sh hypr-display-settings.py nightlight-gui.py sddm-screen-config.py setup-sddm-screen.sh setup_clipboard.sh setup_arabic_keyboard.sh setup-task-manager.sh task-manager-gui.py setup-notifications-theme.py setup-zen-browser-theme.sh setup-initial-cursor-screen.py interactive_restore.sh doing donetask todo rmtask edittask manage_tasks.py omar; do
+    for tool in cachy_tools_menu.sh omar-fav-setup.sh setup-wordpress-local.sh fix-polkit-localwp.sh setup-waybar-glassmorphism.sh hypr-display-settings.py nightlight-gui.py sddm-screen-config.py sddm-Xsetup.sh hypr-monitor-setup.py setup-hdmi-audio.py setup-sddm-screen.sh setup_clipboard.sh setup_arabic_keyboard.sh setup-task-manager.sh task-manager-gui.py setup-notifications-theme.py setup-zen-browser-theme.sh setup-initial-cursor-screen.py interactive_restore.sh doing donetask todo rmtask edittask manage_tasks.py omar; do
         if [ -f "$SCRIPT_DIR/$tool" ]; then
             cp "$SCRIPT_DIR/$tool" "$HOME/.local/share/bin/"
             chmod +x "$HOME/.local/share/bin/$tool"

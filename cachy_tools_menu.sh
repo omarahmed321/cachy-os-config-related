@@ -56,6 +56,7 @@ DUNST_PATH=$(find_tool "setup-notifications-theme.py")
 OMAR_CMD_PATH=$(find_tool "omar")
 ZEN_BROWSER_PATH=$(find_tool "setup-zen-browser-theme.sh")
 BOOT_CURSOR_PATH=$(find_tool "setup-initial-cursor-screen.py")
+HDMI_AUDIO_PATH=$(find_tool "setup-hdmi-audio.py")
 
 # Launchers
 launch_fav_setup() {
@@ -114,6 +115,11 @@ launch_boot_cursor() {
     if [ -n "$BOOT_CURSOR_PATH" ]; then python3 "$BOOT_CURSOR_PATH" & else echo -e "${RED}[ERROR] setup-initial-cursor-screen.py not found!${NC}"; fi
 }
 
+launch_hdmi_audio() {
+    if [ -z "$HDMI_AUDIO_PATH" ]; then echo -e "${RED}[ERROR] setup-hdmi-audio.py not found!${NC}"; return; fi
+    if [ -t 0 ]; then python3 "$HDMI_AUDIO_PATH"; elif command -v kitty &>/dev/null; then kitty --hold python3 "$HDMI_AUDIO_PATH" & fi
+}
+
 # Graphical GUI Rofi / Zenity Launcher
 gui_menu() {
     OPTIONS="1. ⭐️ Omar's Favorite Setup (omar-fav-setup)
@@ -121,7 +127,7 @@ gui_menu() {
 3. 🔐 Fix Polkit Auth for LocalWP
 4. 🌙 Night Light GUI
 5. 🖥️ Display & Mouse Settings
-6. 🎯 Dual Monitor Cursor Alignment
+6. 🎯 Multi-Monitor Alignment
 7. 📊 Waybar Glassmorphism Setup
 8. ⌨️ Double PageUp Trigger
 9. 🔌 Wi-Fi Hotspot Controller
@@ -130,7 +136,8 @@ gui_menu() {
 12. 🔔 Notification Theme Customizer (Dunst)
 13. 🚀 View Command 'omar' System Help
 14. 🌐 Zen Browser Glassmorphism Theme (setup-zen-browser-theme.sh)
-15. 🎯 Initial Boot Cursor Screen Selector"
+15. 🎯 Initial Boot Cursor Screen Selector
+16. 🔊 HDMI / DisplayPort Audio Output"
 
     if command -v rofi &>/dev/null; then
         SELECTION=$(echo -e "$OPTIONS" | rofi -dmenu -i -p "CachyOS Control Panel:")
@@ -144,7 +151,7 @@ gui_menu() {
             "3. 🔐 Fix Polkit Auth for LocalWP" \
             "4. 🌙 Night Light GUI" \
             "5. 🖥️ Display & Mouse Settings" \
-            "6. 🎯 Dual Monitor Cursor Alignment" \
+            "6. 🎯 Multi-Monitor Alignment" \
             "7. 📊 Waybar Glassmorphism Setup" \
             "8. ⌨️ Double PageUp Trigger" \
             "9. 🔌 Wi-Fi Hotspot Controller" \
@@ -154,6 +161,7 @@ gui_menu() {
             "13. 🚀 View Command 'omar' System Help" \
             "14. 🌐 Zen Browser Glassmorphism Theme" \
             "15. 🎯 Initial Boot Cursor Screen Selector" \
+            "16. 🔊 HDMI / DisplayPort Audio Output" \
             --width=540 --height=620 2>/dev/null)
     else
         cli_menu
@@ -166,7 +174,7 @@ gui_menu() {
         *"Fix Polkit"*) launch_polkit_fix ;;
         *"Night Light"*) launch_nightlight ;;
         *"Display & Mouse"*) launch_display_settings ;;
-        *"Cursor Alignment"*) launch_cursor_alignment ;;
+        *"Monitor Alignment"*) launch_cursor_alignment ;;
         *"Waybar Glassmorphism"*) launch_waybar_setup ;;
         *"Double PageUp"*) launch_double_pageup ;;
         *"Hotspot"*) launch_hotspot ;;
@@ -176,6 +184,7 @@ gui_menu() {
         *"Command 'omar'"*) launch_omar_cmd ;;
         *"Zen Browser Glassmorphism"*) launch_zen_browser ;;
         *"Boot Cursor Screen"*) launch_boot_cursor ;;
+        *"Audio Output"*) launch_hdmi_audio ;;
         *) exit 0 ;;
     esac
 }
@@ -196,7 +205,7 @@ EOF
         echo -e "  ${MAGENTA}${BOLD}3)${NC} 🔐 Fix Polkit Auth for LocalWP (${YELLOW}fix-polkit-localwp.sh${NC})"
         echo -e "  ${MAGENTA}${BOLD}4)${NC} 🌙 Launch Night Light GUI (${YELLOW}nightlight-gui.py${NC})"
         echo -e "  ${MAGENTA}${BOLD}5)${NC} 🖥️ Launch Display & Mouse Settings (${YELLOW}hypr-display-settings.py${NC})"
-        echo -e "  ${MAGENTA}${BOLD}6)${NC} 🎯 Dual Monitor Cursor Alignment (${YELLOW}monitor-alignment.sh${NC})"
+        echo -e "  ${MAGENTA}${BOLD}6)${NC} 🎯 Multi-Monitor Alignment (${YELLOW}monitor-alignment.sh${NC})"
         echo -e "  ${MAGENTA}${BOLD}7)${NC} 📊 Launch Waybar Glassmorphism Setup (${YELLOW}setup-waybar-glassmorphism.sh${NC})"
         echo -e "  ${MAGENTA}${BOLD}8)${NC} ⌨️ Double PageUp Listener Trigger (${YELLOW}double-pageup.sh${NC})"
         echo -e "  ${MAGENTA}${BOLD}9)${NC} 🔌 Wi-Fi Hotspot Controller (${YELLOW}start_hotspot.sh${NC})"
@@ -207,9 +216,10 @@ EOF
         echo -e "  ${GREEN}${BOLD}13)${NC} 🚀 View Command 'omar' System Help (${YELLOW}omar${NC})"
         echo -e "  ${GREEN}${BOLD}14)${NC} 🌐 Zen Browser Glassmorphism Theme (${YELLOW}setup-zen-browser-theme.sh${NC})"
         echo -e "  ${GREEN}${BOLD}15)${NC} 🎯 Initial Boot Cursor Screen Selector (${YELLOW}setup-initial-cursor-screen.py${NC})"
-        echo -e "  ${RED}${BOLD}16)${NC} 🚪 Exit"
+        echo -e "  ${GREEN}${BOLD}16)${NC} 🔊 HDMI / DisplayPort Audio Output (${YELLOW}setup-hdmi-audio.py${NC})"
+        echo -e "  ${RED}${BOLD}17)${NC} 🚪 Exit"
         echo -e "${CYAN}--------------------------------------------------------------${NC}"
-        read -p " Select choice [1-16]: " choice
+        read -p " Select choice [1-17]: " choice
 
         case "$choice" in
             1) launch_fav_setup; read -p "Press Enter to continue..." ;;
@@ -227,7 +237,8 @@ EOF
             13) launch_omar_cmd; read -p "Press Enter to continue..." ;;
             14) launch_zen_browser; read -p "Press Enter to continue..." ;;
             15) launch_boot_cursor; read -p "Press Enter to continue..." ;;
-            16|q|Q) echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
+            16) launch_hdmi_audio; read -p "Press Enter to continue..." ;;
+            17|q|Q) echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
             *) echo -e "${RED}[!] Invalid choice.${NC}"; sleep 1 ;;
         esac
     done

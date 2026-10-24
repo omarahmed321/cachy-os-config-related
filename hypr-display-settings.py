@@ -47,7 +47,7 @@ def get_monitor_info():
         }
         
         if len(lines) > 1:
-            match_mode = re.search(r'(\d+x\d+@\d+(?:\.\d+)?)\s+at\s+(\d+x\d+)', lines[1])
+            match_mode = re.search(r'(\d+x\d+@\d+(?:\.\d+)?)\s+at\s+(-?\d+x-?\d+)', lines[1])
             if match_mode:
                 info['current_mode'] = match_mode.group(1)
                 info['position'] = match_mode.group(2)
@@ -261,16 +261,27 @@ def update_monitor_config(name, resolution, hz, scale, pos, transform_val=0):
         
         position = pos if pos and pos != 'auto' else '0x0'
         res_hz = f"{resolution}@{hz}"
-        extra_str = f",transform,{transform_val}" if transform_val > 0 else ""
-        new_line = f"monitor = {name},{res_hz},{position},{scale}{extra_str}\n"
-        
+
+        def build_line(extras):
+            # extras: key/value pairs after the scale (vrr, icc, bitdepth, cm, ...);
+            # only transform is owned by this dialog, everything else is kept
+            pairs = [(k, v) for k, v in extras if k != 'transform']
+            if transform_val > 0:
+                pairs.insert(0, ('transform', str(transform_val)))
+            extra_str = "".join(f",{k},{v}" for k, v in pairs)
+            return f"monitor = {name},{res_hz},{position},{scale}{extra_str}\n"
+
         updated = False
         for i, line in enumerate(lines):
-            match = re.match(r'^\s*monitor\s*=\s*([\w\-]+)\s*,', line)
+            match = re.match(r'^\s*monitor\s*=\s*([\w\-]+)\s*,(.*)$', line)
             if match and match.group(1) == name:
-                lines[i] = new_line
+                fields = [f.strip() for f in match.group(2).split('#')[0].split(',')]
+                rest = fields[3:]
+                extras = list(zip(rest[0::2], rest[1::2]))
+                lines[i] = build_line(extras)
                 updated = True
                 break
+        new_line = build_line([])
                 
         if not updated:
             insert_idx = len(lines)

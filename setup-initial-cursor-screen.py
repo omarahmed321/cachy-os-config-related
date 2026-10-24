@@ -9,8 +9,11 @@ import os
 import sys
 import re
 import subprocess
-import tkinter as tk
-from tkinter import ttk, messagebox
+try:
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+except ImportError:  # 'tk' not installed: --set still works
+    tk = ttk = messagebox = None
 
 USERPREFS_CONF = os.path.expanduser('~/.config/hypr/userprefs.conf')
 
@@ -46,8 +49,10 @@ def apply_initial_cursor_screen(screen_name):
         ]
 
         # Append new exec-once entry
-        entry = f"exec-once = hyprctl dispatch focusmonitor {screen_name} # initial_cursor_screen"
-        new_lines.append(entry)
+        # cursor:default_monitor places the pointer at startup; focusmonitor also
+        # moves keyboard focus there. Both lines carry the tag so re-runs replace them.
+        new_lines.append(f"cursor:default_monitor = {screen_name} # initial_cursor_screen")
+        new_lines.append(f"exec-once = hyprctl dispatch focusmonitor {screen_name} # initial_cursor_screen")
 
         with open(USERPREFS_CONF, 'w') as f:
             f.write('\n'.join(new_lines) + '\n')
@@ -64,12 +69,12 @@ def apply_initial_cursor_screen(screen_name):
 
 def show_error(message):
     # --set runs from the installer without a Tk window, so fall back to stderr
-    if tk._default_root is not None:
+    if tk is not None and tk._default_root is not None:
         messagebox.showerror("Error", message)
     else:
         print(f"Error: {message}", file=sys.stderr)
 
-class BootCursorApp(tk.Tk):
+class BootCursorApp(tk.Tk if tk is not None else object):
     def __init__(self):
         super().__init__()
         self.title("Initial Boot Cursor Screen Selector")
@@ -127,6 +132,9 @@ if __name__ == "__main__":
 
     if not os.environ.get('WAYLAND_DISPLAY') and not os.environ.get('DISPLAY'):
         print("Error: Display environment not found.")
+        sys.exit(1)
+    if tk is None:
+        print("Error: tkinter is unavailable. Install it with: sudo pacman -S tk", file=sys.stderr)
         sys.exit(1)
     app = BootCursorApp()
     app.mainloop()

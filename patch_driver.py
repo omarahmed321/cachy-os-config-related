@@ -208,8 +208,11 @@ ccflags-y += -I$(src) -isystem $(src)"""
 
     # Add the clean, non-recursive ccflags-y definition right before SUBARCH := ...
     subarch_decl = "SUBARCH := $(shell uname -m"
+    # The quoted-include warning only exists in clang (CachyOS kernels are clang-built);
+    # GCC-built kernels reject the unknown -Wno-error= option, so add it for clang only
     new_ccflags = """ccflags-y := $(EXTRA_CFLAGS)
-ccflags-y += -I$(src) -isystem $(src) -Wno-quoted-include-in-angled-header -Wno-error=quoted-include-in-angled-header
+ccflags-y += -I$(src) -isystem $(src)
+ccflags-y += $(if $(CONFIG_CC_IS_CLANG),-Wno-quoted-include-in-angled-header -Wno-error=quoted-include-in-angled-header)
 
 SUBARCH := $(shell uname -m"""
 

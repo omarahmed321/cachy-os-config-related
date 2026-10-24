@@ -154,7 +154,11 @@ done
 echo -e "${CYAN}[6/6] Redacting secrets...${NC}"
 # Mask values on lines that look like credentials (key = value / key: value / key=value)
 find "$OUT" -type f ! -name "*.jpg" ! -name "*.jpeg" ! -name "*.png" ! -name "*.gif" ! -name "*.webp" -print0 | xargs -0 -r sed -i -E \
-    's/^([[:space:]]*"?[A-Za-z0-9_.-]*(password|passwd|passphrase|token|secret|api[_-]?key|psk|SAVED_PASS)[A-Za-z0-9_.-]*"?[[:space:]]*[=:][[:space:]]*).+/\1<redacted>/I' 2>/dev/null
+    -e 's/^([[:space:]]*(export[[:space:]]+|typeset[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*|env[[:space:]]*=[[:space:]]*)?"?[A-Za-z0-9_.-]*(password|passwd|passphrase|token|secret|api[_-]?key|access[_-]?key|private[_-]?key|credential|auth|psk|SAVED_PASS)[A-Za-z0-9_.-]*"?[[:space:]]*[=:,][[:space:]]*).+/\1<redacted>/I' \
+    -e 's/^([[:space:]]*set[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*[A-Za-z0-9_]*(pass|token|secret|key|auth|credential)[A-Za-z0-9_]*[[:space:]]+).+/\1<redacted>/I' \
+    -e 's/^(SETUVAR[[:space:]]+(--export[[:space:]]+)?[A-Za-z0-9_]*(pass|token|secret|key|auth|credential)[A-Za-z0-9_]*:).+/\1<redacted>/I' \
+    -e 's#([a-z][a-z0-9+.-]*://)[^/@[:space:]]+:[^/@[:space:]]+@#\1<redacted>@#Ig' \
+    -e 's/(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|xox[abpr]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16})/<redacted>/g' 2>/dev/null
 # .gitconfig: keep it but drop the e-mail address
 [ -f "$OUT/dotfiles/home.gitconfig" ] && sed -i -E 's/(email[[:space:]]*=).*/\1 <redacted>/I' "$OUT/dotfiles/home.gitconfig"
 

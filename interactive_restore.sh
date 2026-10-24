@@ -55,7 +55,7 @@ DESC_MOD1="Installs essential development tools & packages via pacman:
 
 if prompt_module "1. Core System & Base Packages" "$DESC_MOD1"; then
     echo -e "${GREEN}[+] Installing Core System & Base Packages...${NC}"
-    sudo pacman -S --noconfirm --needed base-devel git curl wget jq eza fzf fastfetch unzip p7zip python python-pip || true
+    sudo pacman -S --noconfirm --needed base-devel git curl wget jq eza fzf fastfetch unzip p7zip python python-pip tk || true
     echo -e "${GREEN}[OK] Core System Packages processed.${NC}\n"
 fi
 
@@ -171,7 +171,7 @@ DESC_MOD7="Installs Display, Mouse & Night Light management panels:
 if prompt_module "7. Display, Mouse & Night Light GUIs" "$DESC_MOD7"; then
     echo -e "${GREEN}[+] Configuring Display & Night Light GUIs...${NC}"
     mkdir -p "$HOME/.local/share/bin"
-    for gui in hypr-display-settings.py nightlight-gui.py sddm-screen-config.py setup-initial-cursor-screen.py; do
+    for gui in hypr-display-settings.py nightlight-gui.py sddm-screen-config.py sddm-Xsetup.sh setup-initial-cursor-screen.py hypr-monitor-setup.py monitor-alignment.sh setup-hdmi-audio.py; do
         if [ -f "$SCRIPT_DIR/$gui" ]; then
             cp "$SCRIPT_DIR/$gui" "$HOME/.local/share/bin/"
             chmod +x "$HOME/.local/share/bin/$gui"

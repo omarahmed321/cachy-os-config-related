@@ -108,26 +108,26 @@ if [ "$SESSION_TYPE" = "wayland" ]; then
     # Wayland menu script using cliphist
     cat << 'EOF' > "$MENU_SCRIPT"
 #!/usr/bin/env bash
-ROFI_THEME="-theme-str 'window { width: 40%; } listview { lines: 10; }'"
+ROFI_THEME=(-theme-str 'window { width: 40%; } listview { lines: 10; }')
 FAVORITES_FILE="$HOME/.cliphist_favorites"
 
 main_action=""
 if [ $# -eq 0 ]; then
-    main_action=$(echo -e "📋 Clipboard History\n❌ Delete Entry\n⭐ View Favorites\n➕ Add to Favorites\n🗑️ Clear History" | rofi -dmenu -i -p "Clipboard Actions" -font "JetBrainsMono Nerd Font 11" $ROFI_THEME)
+    main_action=$(echo -e "📋 Clipboard History\n❌ Delete Entry\n⭐ View Favorites\n➕ Add to Favorites\n🗑️ Clear History" | rofi -dmenu -i -p "Clipboard Actions" -font "JetBrainsMono Nerd Font 11" "${ROFI_THEME[@]}")
 else
     main_action="📋 Clipboard History"
 fi
 
 case "$main_action" in
     "📋 Clipboard History")
-        selected=$(cliphist list | rofi -dmenu -i -p "Paste Item" -font "JetBrainsMono Nerd Font 11" $ROFI_THEME)
+        selected=$(cliphist list | rofi -dmenu -i -p "Paste Item" -font "JetBrainsMono Nerd Font 11" "${ROFI_THEME[@]}")
         if [ -n "$selected" ]; then
             echo "$selected" | cliphist decode | wl-copy
             notify-send "Clipboard" "Item copied to active clipboard" -i edit-paste
         fi
         ;;
     "❌ Delete Entry")
-        selected=$(cliphist list | rofi -dmenu -i -p "Delete Item" -font "JetBrainsMono Nerd Font 11" $ROFI_THEME)
+        selected=$(cliphist list | rofi -dmenu -i -p "Delete Item" -font "JetBrainsMono Nerd Font 11" "${ROFI_THEME[@]}")
         if [ -n "$selected" ]; then
             echo "$selected" | cliphist delete
             notify-send "Clipboard" "Item deleted from history" -i edit-delete
@@ -140,7 +140,7 @@ case "$main_action" in
             for fav in "${favorites[@]}"; do
                 decoded_lines+=("$(echo "$fav" | base64 --decode | tr '\n' ' ' | cut -c1-60)...")
             done
-            selected_fav=$(printf "%s\n" "${decoded_lines[@]}" | rofi -dmenu -i -p "Favorite Item" -font "JetBrainsMono Nerd Font 11" $ROFI_THEME)
+            selected_fav=$(printf "%s\n" "${decoded_lines[@]}" | rofi -dmenu -i -p "Favorite Item" -font "JetBrainsMono Nerd Font 11" "${ROFI_THEME[@]}")
             if [ -n "$selected_fav" ]; then
                 index=$(printf "%s\n" "${decoded_lines[@]}" | grep -nxF "$selected_fav" | cut -d: -f1)
                 if [ -n "$index" ]; then
@@ -153,7 +153,7 @@ case "$main_action" in
         fi
         ;;
     "➕ Add to Favorites")
-        selected=$(cliphist list | rofi -dmenu -i -p "Add to Favorites" -font "JetBrainsMono Nerd Font 11" $ROFI_THEME)
+        selected=$(cliphist list | rofi -dmenu -i -p "Add to Favorites" -font "JetBrainsMono Nerd Font 11" "${ROFI_THEME[@]}")
         if [ -n "$selected" ]; then
             full_item=$(echo "$selected" | cliphist decode)
             encoded_item=$(echo "$full_item" | base64 -w 0)
@@ -166,7 +166,7 @@ case "$main_action" in
         fi
         ;;
     "🗑️ Clear History")
-        confirm=$(echo -e "No\nYes" | rofi -dmenu -i -p "Clear Entire Clipboard History?" -font "JetBrainsMono Nerd Font 11" $ROFI_THEME)
+        confirm=$(echo -e "No\nYes" | rofi -dmenu -i -p "Clear Entire Clipboard History?" -font "JetBrainsMono Nerd Font 11" "${ROFI_THEME[@]}")
         if [ "$confirm" = "Yes" ]; then
             cliphist wipe
             notify-send "Clipboard" "Entire clipboard history has been cleared" -i edit-clear

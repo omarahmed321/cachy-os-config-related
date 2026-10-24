@@ -5,14 +5,18 @@
 #   Repo:    https://github.com/omarahmed321/cachy-os-config-related
 # =============================================================================
 
+import glob
 import os
 import sys
 import re
 import shutil
 import subprocess
 import tempfile
-import tkinter as tk
-from tkinter import ttk, messagebox
+try:
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+except ImportError:  # 'tk' not installed: --set still works
+    tk = ttk = messagebox = None
 
 SDDM_CONF_DIR = "/etc/sddm.conf.d"
 SDDM_DISPLAY_CONF = "/etc/sddm.conf.d/10-display.conf"
@@ -80,6 +84,26 @@ def get_monitors_info():
             
     return monitors
 
+def connected_outputs():
+    """Kernel connector names of every connected screen (same names Hyprland uses)."""
+    names = []
+    for status in sorted(glob.glob("/sys/class/drm/card*-*/status")):
+        try:
+            with open(status) as f:
+                if f.read().strip() == "connected":
+                    names.append(os.path.basename(os.path.dirname(status)).split("-", 1)[1])
+        except OSError:
+            pass
+    return names or list(get_monitors_info().keys())
+
+def find_xsetup_template():
+    here = os.path.dirname(os.path.abspath(__file__))
+    for path in (os.path.join(here, "sddm-Xsetup.sh"),
+                 os.path.expanduser("~/.local/share/bin/sddm-Xsetup.sh")):
+        if os.path.isfile(path):
+            return path
+    raise FileNotFoundError("sddm-Xsetup.sh not found next to sddm-screen-config.py")
+
 def apply_sddm_screen(target_screen):
     try:
         # Private temp dir: fixed /tmp paths could be pre-created by another user
@@ -102,56 +126,21 @@ CompositorCommand=kwin_wayland --drm --output-order {target_screen}
         with open(tmp_target, 'w') as f:
             f.write(target_screen + '\n')
 
-        xsetup_content = """#!/bin/sh
-# Xsetup - run as root before the login dialog appears
+        # Only the chosen screen shows the greeter; every other connected one is switched off
+        others = [n for n in connected_outputs() if n != target_screen]
+        tmp_disabled = os.path.join(tmp_dir, "disabled_monitors")
+        with open(tmp_disabled, 'w') as f:
+            f.write("".join(n + "\n" for n in others))
 
-CONNECTED_MONITORS=$(xrandr | grep " connected" | awk '{print $1}')
-MONITOR_COUNT=$(echo "$CONNECTED_MONITORS" | wc -l)
-if [ "$MONITOR_COUNT" -gt 1 ]; then
-    TARGET_MON=$(cat /etc/sddm.conf.d/target_monitor 2>/dev/null | tr -d '[:space:]')
-    DISABLED_MONS=$(cat /etc/sddm.conf.d/disabled_monitors 2>/dev/null)
-
-    PRIMARY_MONITOR=""
-    if [ -n "$TARGET_MON" ] && echo "$CONNECTED_MONITORS" | grep -qx "$TARGET_MON"; then
-        PRIMARY_MONITOR="$TARGET_MON"
-    fi
-    
-    if [ -z "$PRIMARY_MONITOR" ]; then
-        PRIMARY_MONITOR=$(echo "$CONNECTED_MONITORS" | head -n 1)
-    fi
-
-    if [ -n "$PRIMARY_MONITOR" ]; then
-        # 1. Set Primary Monitor
-        xrandr --output "$PRIMARY_MONITOR" --auto --primary 2>/dev/null || true
-
-        # 2. Handle Secondary Monitors (Turn off if disabled, else place right-of)
-        for mon in $CONNECTED_MONITORS; do
-            if [ "$mon" != "$PRIMARY_MONITOR" ]; then
-                if echo "$DISABLED_MONS" | grep -qx "$mon"; then
-                    xrandr --output "$mon" --off 2>/dev/null || xrandr --output "$mon" --brightness 0 2>/dev/null || true
-                else
-                    xrandr --output "$mon" --auto --right-of "$PRIMARY_MONITOR" 2>/dev/null || true
-                fi
-            fi
-        done
-    fi
-fi
-
-# Mouse sensitivity
-for id in $(xinput list --id-only 2>/dev/null); do
-    xinput set-prop "$id" "libinput Accel Profile Enabled" 0 1 0 2>/dev/null || true
-    xinput set-prop "$id" "libinput Accel Speed" -0.5 2>/dev/null || true
-done
-"""
-        with open(tmp_xsetup, 'w') as f:
-            f.write(xsetup_content)
+        shutil.copyfile(find_xsetup_template(), tmp_xsetup)
 
         install_cmd = (
             f"mkdir -p {SDDM_CONF_DIR} /usr/share/sddm/scripts"
             f" && cp {tmp_conf} {SDDM_DISPLAY_CONF}"
             f" && cp {tmp_target} {SDDM_CONF_DIR}/target_monitor"
+            f" && cp {tmp_disabled} {SDDM_CONF_DIR}/disabled_monitors"
             f" && cp {tmp_xsetup} /usr/share/sddm/scripts/Xsetup"
-            f" && chmod 644 {SDDM_DISPLAY_CONF} {SDDM_CONF_DIR}/target_monitor"
+            f" && chmod 644 {SDDM_DISPLAY_CONF} {SDDM_CONF_DIR}/target_monitor {SDDM_CONF_DIR}/disabled_monitors"
             f" && chmod 755 /usr/share/sddm/scripts/Xsetup"
         )
         try:
@@ -168,12 +157,12 @@ done
 
 def show_error(message):
     # --set runs from the installer without a Tk window, so fall back to stderr
-    if tk._default_root is not None:
+    if tk is not None and tk._default_root is not None:
         messagebox.showerror("Error", message)
     else:
         print(f"Error: {message}", file=sys.stderr)
 
-class SDDMScreenApp(tk.Tk):
+class SDDMScreenApp(tk.Tk if tk is not None else object):
     def __init__(self):
         super().__init__()
         self.title("SDDM Display & Screen Selector")
@@ -254,6 +243,9 @@ if __name__ == "__main__":
 
     if not os.environ.get('WAYLAND_DISPLAY') and not os.environ.get('DISPLAY'):
         print("Error: No display environment found.")
+        sys.exit(1)
+    if tk is None:
+        print("Error: tkinter is unavailable. Install it with: sudo pacman -S tk", file=sys.stderr)
         sys.exit(1)
     app = SDDMScreenApp()
     app.mainloop()

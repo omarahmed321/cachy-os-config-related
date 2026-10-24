@@ -154,18 +154,18 @@ if [[ "$opt_install_pkgs" =~ ^[Yy]$ ]]; then
     gpu_choice="${gpu_choice:-1}"
 
     GPU_VENDOR="$AUTO_GPU"
-    if [ "$gpu_choice" -eq 2 ]; then
+    if [ "$gpu_choice" = "2" ]; then
         GPU_VENDOR="nvidia"
-    elif [ "$gpu_choice" -eq 3 ]; then
+    elif [ "$gpu_choice" = "3" ]; then
         GPU_VENDOR="amd"
-    elif [ "$gpu_choice" -eq 4 ]; then
+    elif [ "$gpu_choice" = "4" ]; then
         GPU_VENDOR="intel"
-    elif [ "$gpu_choice" -eq 5 ]; then
+    elif [ "$gpu_choice" = "5" ]; then
         GPU_VENDOR="skip"
     fi
     
     REQUIRED_PACKAGES=(
-        hyprland waybar dunst rofi-wayland kitty firefox zen-browser-bin code dolphin yazi sddm-astronaut-theme
+        hyprland waybar dunst rofi kitty firefox zen-browser-bin code dolphin yazi sddm-astronaut-theme
         swaylock-effects-git wlogout cliphist hyprpicker hyprsunset hyprlock
         grimblast-git slurp jq polkit-kde-agent eza awesome-terminal-fonts
         ttf-meslo-nerd ttf-jetbrains-mono-nerd blueman bluez bluez-utils
@@ -177,14 +177,23 @@ if [[ "$opt_install_pkgs" =~ ^[Yy]$ ]]; then
         oh-my-zsh-git zsh-theme-powerlevel10k zsh-autosuggestions
         zsh-syntax-highlighting zsh-completions
         wl-clipboard qt5-graphicaleffects qt5-quickcontrols qt5-quickcontrols2
-        seahorse networkmanager zenity fastfetch bibata-cursor-theme-bin fzf cachyos-fish-config
+        seahorse networkmanager zenity fastfetch bibata-cursor-theme-bin fzf usbutils pciutils
         psmisc python dnsmasq hostapd iw sddm ananicy-cpp gammastep
         pipewire pipewire-pulse pipewire-alsa wireplumber
         xdg-desktop-portal-hyprland xdg-desktop-portal-gtk xdg-user-dirs
     )
 
+    # CachyOS-only package: skipped on plain Arch, where it does not exist
+    pacman -Si cachyos-fish-config &>/dev/null && REQUIRED_PACKAGES+=(cachyos-fish-config)
+
     if [ "$GPU_VENDOR" = "nvidia" ]; then
-        REQUIRED_PACKAGES+=(nvidia-dkms nvidia-utils lib32-nvidia-utils egl-wayland libva-nvidia-driver)
+        # CachyOS: prebuilt per-kernel modules; elsewhere DKMS (nvidia-dkms no longer exists)
+        NV_MODULES=()
+        for kernel in $(pacman -Qq 2>/dev/null | grep -E '^linux-cachyos(-[a-z]+)?$'); do
+            pacman -Si "${kernel}-nvidia-open" &>/dev/null && NV_MODULES+=("${kernel}-nvidia-open")
+        done
+        [ ${#NV_MODULES[@]} -eq 0 ] && NV_MODULES=(nvidia-open-dkms)
+        REQUIRED_PACKAGES+=("${NV_MODULES[@]}" nvidia-utils lib32-nvidia-utils egl-wayland libva-nvidia-driver)
     elif [ "$GPU_VENDOR" = "amd" ]; then
         REQUIRED_PACKAGES+=(mesa lib32-mesa vulkan-radeon lib32-vulkan-radeon libva-mesa-driver lib32-libva-mesa-driver)
     elif [ "$GPU_VENDOR" = "intel" ]; then
